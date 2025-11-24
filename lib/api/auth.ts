@@ -1,81 +1,74 @@
-import { apiClient } from "./client"
-import type { User } from "@/lib/types"
+/**
+ * Legacy Auth API - For backward compatibility
+ * @deprecated Use cmsAuthService, dealerAuthService, or customerAuthService instead
+ * This file is kept for backward compatibility but will route to appropriate service based on role
+ */
+
+import { cmsAuthService } from './auth/cms-auth.service'
+import { dealerAuthService } from './auth/dealer-auth.service'
+import { customerAuthService } from './auth/customer-auth.service'
+import { getAuthServiceByRole } from './auth/auth-service-factory'
+import type { User } from '@/lib/types'
+import type { Role } from '@/lib/types'
 
 interface LoginRequest {
   username: string
   password: string
 }
 
-interface LoginResponse {
-  statusCode: number
-  success: boolean
-  message: string
-  data: {
-    token: string
-    refreshToken: string
-    role: string
-  }
-  timestamp: string
-}
-
+/**
+ * @deprecated Use cmsAuthService, dealerAuthService, or customerAuthService instead
+ */
 export const authApi = {
-  login: async (credentials: LoginRequest): Promise<{ user: User; token: string }> => {
+  /**
+   * @deprecated Use specific auth service based on user role
+   * This method will try to determine the correct service based on login response
+   */
+  login: async (
+    credentials: LoginRequest,
+    role?: Role | null
+  ): Promise<{ user: User; token: string }> => {
+    // If role is provided, use the appropriate service
+    if (role) {
+      const authService = getAuthServiceByRole(role)
+      return authService.login(credentials)
+    }
+
+    // Otherwise, try CMS first (most common)
     try {
-      const response = await apiClient.post<LoginResponse>("/Auth/login", {
-        username: credentials.username,
-        password: credentials.password,
-      })
-
-      console.log("Login successful:", response)
-
-      // Check if response has the expected structure
-      if (!response?.data?.token) {
-        throw new Error("Invalid response format from server")
+      return await cmsAuthService.login(credentials)
+    } catch (error) {
+      // If CMS fails, try Customer
+      try {
+        return await customerAuthService.login(credentials)
+      } catch (customerError) {
+        // If both fail, try Dealer
+        return await dealerAuthService.login(credentials)
       }
-
-      // Parse JWT to get user info
-      const tokenParts = response.data.token.split('.')
-      if (tokenParts.length !== 3) {
-        throw new Error("Invalid token format")
-      }
-
-      const payload = JSON.parse(atob(tokenParts[1]))
-      console.log("Token payload:", payload)
-
-      // Extract user info from JWT claims
-      const userId = payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]
-      const userName = payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"]
-      const userEmail = payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]
-
-      // Map backend response to frontend User type
-      const user: User = {
-        id: userId,
-        email: userEmail,
-        name: userName,
-        role: response.data.role.toUpperCase() as any,
-        createdAt: response.timestamp,
-      }
-
-      return {
-        user,
-        token: response.data.token,
-      }
-    } catch (error: any) {
-      console.error("Login API error:", error)
-      throw new Error(error?.message || "Login failed. Please try again.")
     }
   },
-  logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("evdms_auth_token")
+
+  /**
+   * @deprecated Use specific auth service logout method
+   */
+  logout: async (role?: Role | null): Promise<void> => {
+    if (role) {
+      const authService = getAuthServiceByRole(role)
+      return authService.logout()
     }
-    return apiClient.post("/Auth/logout", {})
+
+    // Try to logout from all services
+    try {
+      await cmsAuthService.logout()
+    } catch {
+      // Ignore errors
+    }
   },
-  me: () => apiClient.get<User>("/Auth/me"),
-  getStoredToken: () => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("evdms_auth_token")
-    }
-    return null
+
+  /**
+   * @deprecated Use specific auth service getStoredToken method
+   */
+  getStoredToken: (): string | null => {
+    return cmsAuthService.getStoredToken()
   },
 }

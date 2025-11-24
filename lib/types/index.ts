@@ -1,4 +1,7 @@
-export type Role = "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN"
+export { UserRole, type UserRoleString, type ApiPrefix } from './enums'
+import type { UserRoleString } from './enums'
+
+export type Role = UserRoleString
 
 export interface User {
   id: string

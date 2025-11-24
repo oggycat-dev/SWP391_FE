@@ -4,8 +4,9 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import type { User } from "@/lib/types"
-import { authApi } from "@/lib/api/auth"
+import type { User, Role } from "@/lib/types"
+import { getAuthServiceByRole } from "@/lib/api/auth/auth-service-factory"
+import { getDefaultRouteByRole } from "@/lib/config/role-config"
 
 interface AuthContextType {
   user: User | null
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = authApi.getStoredToken()
+      const token = localStorage.getItem("evdms_auth_token")
       if (!token) {
         setIsLoading(false)
         if (pathname !== "/login") {
@@ -40,14 +41,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // const user = await authApi.me();
         // setUser(user);
 
-        // Mock restoration for demo purposes if no API is actually running
-        if (!user) {
-          // This is just a fallback to prevent infinite loading in demo
-          // In production, this should fail if /me endpoint fails
+        // Try to restore user from token if available
+        // For now, we'll just check if token exists
+        // In production, decode JWT or call /me endpoint
+        const storedUser = localStorage.getItem("evdms_user")
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser))
+          } catch {
+            // Invalid stored user, clear it
+            localStorage.removeItem("evdms_user")
+          }
         }
       } catch (error) {
         console.error("Auth initialization failed", error)
         localStorage.removeItem("evdms_auth_token")
+        localStorage.removeItem("evdms_refresh_token")
+        localStorage.removeItem("evdms_user")
       } finally {
         setIsLoading(false)
       }
@@ -58,14 +68,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (token: string, userData: User) => {
     localStorage.setItem("evdms_auth_token", token)
+    localStorage.setItem("evdms_user", JSON.stringify(userData))
     setUser(userData)
-    router.push("/dashboard")
+    
+    // Redirect to appropriate dashboard based on role
+    const defaultRoute = getDefaultRouteByRole(userData.role as Role)
+    router.push(defaultRoute)
   }
 
   const logout = async () => {
-    await authApi.logout()
-    setUser(null)
-    router.push("/login")
+    try {
+      // Get the appropriate auth service based on user role
+      if (user?.role) {
+        const authService = getAuthServiceByRole(user.role as Role)
+        await authService.logout()
+      } else {
+        // Fallback: clear tokens
+        localStorage.removeItem("evdms_auth_token")
+        localStorage.removeItem("evdms_refresh_token")
+      }
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Clear tokens anyway
+      localStorage.removeItem("evdms_auth_token")
+      localStorage.removeItem("evdms_refresh_token")
+    } finally {
+      localStorage.removeItem("evdms_user")
+      setUser(null)
+      router.push("/login")
+    }
   }
 
   return <AuthContext.Provider value={{ user, isLoading, login, logout }}>{children}</AuthContext.Provider>
