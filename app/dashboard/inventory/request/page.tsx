@@ -2,38 +2,89 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { MOCK_VEHICLES } from "@/lib/mock-data"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useCreateVehicleRequest } from "@/hooks/use-vehicle-requests"
+import { useVehicleModels, useVehicleVariants, useVehicleColors } from "@/hooks/use-vehicles"
+
+const requestSchema = z.object({
+  vehicleId: z.string().min(1, "Vehicle model is required"),
+  variantId: z.string().min(1, "Variant is required"),
+  colorId: z.string().min(1, "Color is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1").max(50, "Quantity cannot exceed 50"),
+  notes: z.string().optional(),
+})
+
+type RequestFormValues = z.infer<typeof requestSchema>
 
 export default function RequestVehiclePage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const { mutate, isLoading } = useCreateVehicleRequest()
+  const { data: vehicleModels } = useVehicleModels()
+  const [selectedModelId, setSelectedModelId] = useState<string>("")
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("")
 
-  const [selectedVehicle, setSelectedVehicle] = useState<string>("")
-  const [selectedVariant, setSelectedVariant] = useState<string>("")
-  const [selectedColor, setSelectedColor] = useState<string>("")
-  const [quantity, setQuantity] = useState<number>(1)
+  const { data: variants } = useVehicleVariants(
+    selectedModelId ? { modelId: selectedModelId } : undefined,
+    { enabled: !!selectedModelId }
+  )
 
-  const vehicle = MOCK_VEHICLES.find((v) => v.id === selectedVehicle)
+  const { data: colors } = useVehicleColors(
+    selectedVariantId ? { variantId: selectedVariantId } : undefined,
+    { enabled: !!selectedVariantId }
+  )
 
-  const handleSubmit = async () => {
-    setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+  const form = useForm<RequestFormValues>({
+    resolver: zodResolver(requestSchema),
+    defaultValues: {
+      vehicleId: "",
+      variantId: "",
+      colorId: "",
+      quantity: 1,
+      notes: "",
+    },
+  })
 
-    toast({
-      title: "Request Submitted",
-      description: "Your vehicle request has been sent to EVM for approval.",
-    })
+  const onSubmit = async (data: RequestFormValues) => {
+    try {
+      await mutate({
+        vehicleId: data.vehicleId,
+        variantId: data.variantId,
+        colorId: data.colorId,
+        quantity: data.quantity,
+        notes: data.notes || undefined,
+      })
 
-    router.push("/dashboard/inventory")
+      toast({
+        title: "Request Submitted",
+        description: "Your vehicle request has been sent to EVM for approval.",
+      })
+
+      router.push("/dashboard/inventory")
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error?.message || "Failed to submit vehicle request",
+      })
+    }
   }
 
   return (
@@ -53,86 +104,153 @@ export default function RequestVehiclePage() {
           <CardTitle>Request Details</CardTitle>
           <CardDescription>Select the vehicle configuration you need.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Vehicle Model</Label>
-            <Select
-              value={selectedVehicle}
-              onValueChange={(v) => {
-                setSelectedVehicle(v)
-                setSelectedVariant("")
-                setSelectedColor("")
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select model..." />
-              </SelectTrigger>
-              <SelectContent>
-                {MOCK_VEHICLES.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.brand} {v.modelName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="vehicleId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vehicle Model *</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value)
+                        setSelectedModelId(value)
+                        setSelectedVariantId("")
+                        form.setValue("variantId", "")
+                        form.setValue("colorId", "")
+                      }}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select model..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {vehicleModels?.items?.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.brand} {model.modelName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {vehicle && (
-            <>
-              <div className="space-y-2">
-                <Label>Variant</Label>
-                <Select value={selectedVariant} onValueChange={setSelectedVariant}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select variant..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicle.variants.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FormField
+                control={form.control}
+                name="variantId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Variant *</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value)
+                        setSelectedVariantId(value)
+                        form.setValue("colorId", "")
+                      }}
+                      defaultValue={field.value}
+                      disabled={!selectedModelId}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select variant..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {variants?.items?.map((variant) => (
+                          <SelectItem key={variant.id} value={variant.id}>
+                            {variant.variantName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <Select value={selectedColor} onValueChange={setSelectedColor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select color..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicle.colors.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FormField
+                control={form.control}
+                name="colorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={!selectedVariantId}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select color..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {colors?.items?.map((color) => (
+                          <SelectItem key={color.id} value={color.id}>
+                            {color.colorName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="space-y-2">
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number.parseInt(e.target.value))}
-                />
-              </div>
-            </>
-          )}
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="50"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                      />
+                    </FormControl>
+                    <FormDescription>Number of vehicles to request (1-50)</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Additional notes..." {...field} />
+                    </FormControl>
+                    <FormDescription>Optional: Any special requirements</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <CardFooter className="flex justify-end gap-2 px-0 pb-0">
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Submit Request
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => router.back()}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!selectedVehicle || !selectedVariant || !selectedColor || isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Submit Request
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   )

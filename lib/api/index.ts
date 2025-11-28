@@ -10,5 +10,6 @@ export * from './test-drives'
 export * from './payments'
 export * from './vehicle-requests'
 export * from './vehicles'
+export * from './users'
 export { apiClient } from './client'
 

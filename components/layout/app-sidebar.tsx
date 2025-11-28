@@ -15,6 +15,7 @@ import {
   Tag,
   FileText,
   DollarSign,
+  UserCog,
 } from "lucide-react"
 
 import { NavMain } from "@/components/layout/nav-main"
@@ -118,6 +119,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Dealers",
       url: "/dashboard/dealers",
       icon: Building2,
+    },
+    {
+      title: "Users",
+      url: "/dashboard/users",
+      icon: UserCog,
     },
     {
       title: "Promotions",

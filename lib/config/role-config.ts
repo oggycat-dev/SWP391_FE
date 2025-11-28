@@ -28,6 +28,9 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/dashboard/promotions': ['Admin', 'EVMStaff', 'EVMManager'],
   '/dashboard/reports': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager'],
 
+  // Admin-only routes
+  '/dashboard/users': ['Admin'],
+
   // Shared routes - Multiple roles can access
   '/dashboard/customers': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
   '/dashboard/orders': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],

@@ -34,10 +34,29 @@ export function useApi<T>(
     error: null,
   })
 
-  // Use ref to track if request is in progress
+  // Use refs to track state and prevent re-creation
   const isRequestingRef = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
+  const apiCallRef = useRef(apiCall)
+  const onSuccessRef = useRef(onSuccess)
+  const onErrorRef = useRef(onError)
+
+  // Update refs when values change (without causing re-renders)
+  useEffect(() => {
+    apiCallRef.current = apiCall
+    onSuccessRef.current = onSuccess
+    onErrorRef.current = onError
+  }, [apiCall, onSuccess, onError])
+
+  // Track mount state
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const execute = useCallback(async () => {
     // Prevent duplicate requests
@@ -58,15 +77,15 @@ export function useApi<T>(
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const result = await apiCall()
+      const result = await apiCallRef.current()
 
       // Check if component is still mounted
-      if (abortControllerRef.current?.signal.aborted) {
+      if (!isMountedRef.current || abortControllerRef.current?.signal.aborted) {
         return
       }
 
       setState({ data: result, isLoading: false, error: null })
-      onSuccess?.(result)
+      onSuccessRef.current?.(result)
     } catch (error) {
       // Ignore abort errors
       if (error instanceof Error && error.name === 'AbortError') {
@@ -74,17 +93,17 @@ export function useApi<T>(
       }
 
       // Check if component is still mounted
-      if (abortControllerRef.current?.signal.aborted) {
+      if (!isMountedRef.current || abortControllerRef.current?.signal.aborted) {
         return
       }
 
       const apiError = error instanceof Error ? error : new Error('Unknown error')
       setState((prev) => ({ ...prev, isLoading: false, error: apiError }))
-      onError?.(apiError)
+      onErrorRef.current?.(apiError)
     } finally {
       isRequestingRef.current = false
     }
-  }, [apiCall, onSuccess, onError])
+  }, []) // Empty deps - use refs instead
 
   const refetch = useCallback(async () => {
     await execute()
@@ -105,7 +124,7 @@ export function useApi<T>(
       }, refetchInterval)
     }
 
-    // Cleanup on unmount
+    // Cleanup on unmount or when dependencies change
     return () => {
       // Cancel ongoing request
       if (abortControllerRef.current) {
@@ -115,11 +134,12 @@ export function useApi<T>(
       // Clear interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
 
       isRequestingRef.current = false
     }
-  }, [enabled, execute, refetchInterval])
+  }, [enabled, refetchInterval, execute])
 
   return {
     ...state,
