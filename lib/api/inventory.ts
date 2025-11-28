@@ -1,10 +1,10 @@
 import { apiClient } from "./client"
-import type { InventoryItem } from "@/lib/types"
+import type { Inventory } from "@/lib/types"
 
 export const inventoryApi = {
-  getAll: (params?: any) => apiClient.get<InventoryItem[]>("/inventory", params),
-  getById: (id: string) => apiClient.get<InventoryItem>(`/inventory/${id}`),
-  updateStatus: (id: string, status: string) => apiClient.put<InventoryItem>(`/inventory/${id}/status`, { status }),
+  getAll: (params?: any) => apiClient.get<Inventory[]>("/inventory", params),
+  getById: (id: string) => apiClient.get<Inventory>(`/inventory/${id}`),
+  updateStatus: (id: string, status: string) => apiClient.put<Inventory>(`/inventory/${id}/status`, { status }),
   transfer: (id: string, targetLocation: string) =>
-    apiClient.post<InventoryItem>(`/inventory/${id}/transfer`, { targetLocation }),
+    apiClient.post<Inventory>(`/inventory/${id}/transfer`, { targetLocation }),
 }

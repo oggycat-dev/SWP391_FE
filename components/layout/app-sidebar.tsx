@@ -20,8 +20,7 @@ import {
 
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
-import { TeamSwitcher } from "@/components/layout/team-switcher"
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail, useSidebar } from "@/components/ui/sidebar"
 import { useAuth } from "@/components/auth/auth-provider"
 import { canAccessRoute } from "@/lib/config/role-config"
 import type { Role } from "@/lib/types"
@@ -41,6 +40,7 @@ interface NavItem {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
   const userRole = (user?.role as Role) || null
+  const { state } = useSidebar()
 
   // All possible menu items
   const allMenuItems: NavItem[] = [
@@ -119,6 +119,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Dealers",
       url: "/dashboard/dealers",
       icon: Building2,
+      items: [
+        {
+          title: "All Dealers",
+          url: "/dashboard/dealers",
+        },
+        {
+          title: "Contracts",
+          url: "/dashboard/dealers/contracts",
+        },
+      ],
     },
     {
       title: "Users",
@@ -159,23 +169,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [userRole])
 
   const defaultUser = {
-    name: user?.name || "Guest",
-    email: user?.email || "guest@example.com",
+    name: user?.name || "User",
+    email: user?.email || "user@example.com",
     avatar: user?.avatar || "https://github.com/shadcn.png",
   }
-
-  const teams = [
-    {
-      name: "EV Dealer Management System",
-      logo: GalleryVerticalEnd,
-      plan: userRole || "Guest",
-    },
-  ]
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <div className="flex h-16 items-center px-4">
+          <div className="flex items-center gap-2">
+            <GalleryVerticalEnd className="h-6 w-6 shrink-0" />
+            {state === "expanded" && (
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">EV Dealer System</span>
+                {userRole && <span className="text-xs text-muted-foreground">{userRole}</span>}
+              </div>
+            )}
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={filteredMenuItems} />

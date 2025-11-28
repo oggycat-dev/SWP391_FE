@@ -28,36 +28,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem("evdms_auth_token")
       if (!token) {
         setIsLoading(false)
-        if (pathname !== "/login") {
-          router.push("/login")
-        }
+        // Don't auto-redirect here, let middleware handle it
+        // This prevents flash of redirect on page load
         return
       }
 
       try {
-        // In a real app, we would validate the token and fetch user profile here
-        // For this demo, we'll simulate restoring a session if we have a token
-        // Ideally, you'd have an endpoint like /auth/me
-        // const user = await authApi.me();
-        // setUser(user);
-
-        // Try to restore user from token if available
-        // For now, we'll just check if token exists
-        // In production, decode JWT or call /me endpoint
+        // Try to restore user from localStorage
         const storedUser = localStorage.getItem("evdms_user")
         if (storedUser) {
           try {
-            setUser(JSON.parse(storedUser))
-          } catch {
-            // Invalid stored user, clear it
+            const userData = JSON.parse(storedUser)
+            setUser(userData)
+            
+            // Validate token is not expired by checking JWT exp
+            // If token is valid, keep user logged in
+            const tokenParts = token.split('.')
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]))
+              const exp = payload.exp * 1000 // Convert to milliseconds
+              
+              if (Date.now() >= exp) {
+                console.log("[AuthProvider] Token expired, will refresh on next API call")
+                // Don't logout here, let the API client handle refresh
+              }
+            }
+          } catch (error) {
+            // Invalid stored user or token, clear everything
+            console.error("[AuthProvider] Invalid stored data:", error)
             localStorage.removeItem("evdms_user")
+            localStorage.removeItem("evdms_auth_token")
+            localStorage.removeItem("evdms_refresh_token")
+            setUser(null)
           }
+        } else {
+          // Have token but no user data, clear token
+          localStorage.removeItem("evdms_auth_token")
+          localStorage.removeItem("evdms_refresh_token")
         }
       } catch (error) {
         console.error("Auth initialization failed", error)
         localStorage.removeItem("evdms_auth_token")
         localStorage.removeItem("evdms_refresh_token")
         localStorage.removeItem("evdms_user")
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
@@ -69,6 +83,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (token: string, userData: User) => {
     localStorage.setItem("evdms_auth_token", token)
     localStorage.setItem("evdms_user", JSON.stringify(userData))
+    
+    // Set cookie for middleware (expires in 7 days)
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 7)
+    document.cookie = `evdms_auth_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`
+    
     setUser(userData)
     
     // Redirect to appropriate dashboard based on role
@@ -94,6 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("evdms_refresh_token")
     } finally {
       localStorage.removeItem("evdms_user")
+      
+      // Clear cookie
+      document.cookie = "evdms_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax"
+      
       setUser(null)
       router.push("/login")
     }

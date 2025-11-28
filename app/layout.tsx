@@ -4,7 +4,15 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/components/auth/auth-provider"
+import { TokenSync } from "@/components/auth/token-sync"
+import { QueryProvider } from "@/components/providers/query-provider"
 import { Toaster } from "@/components/ui/toaster"
+
+// Load development utilities
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+  import("@/lib/utils/auth-test-utils")
+  import("@/lib/config/dev-accounts")
+}
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -40,10 +48,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <TokenSync />
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </QueryProvider>
         <Analytics />
       </body>
     </html>

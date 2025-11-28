@@ -32,12 +32,12 @@ interface ApiResponse<T> {
 
 export const cmsAuthService = {
   /**
-   * Login for CMS users (Admin, EVMStaff, EVMManager)
+   * Login for CMS users (Admin, EVMStaff, DealerManager, DealerStaff)
    */
   login: async (data: LoginRequest): Promise<{ user: User; token: string }> => {
     console.log('[CMS Auth] Login')
     try {
-      // apiClient.post already unwraps the response.data, so response is LoginResponseData directly
+      // Call backend API
       const response = await apiClient.post<LoginResponseData>(AUTH_ENDPOINTS.CMS.LOGIN, {
         username: data.username,
         password: data.password,
@@ -50,14 +50,15 @@ export const cmsAuthService = {
         throw new Error('Invalid response format from server')
       }
 
-      // Validate that user has CMS access (Admin, EVMManager, or EVMStaff)
+      // Validate that user has CMS access (Admin, EVMStaff, DealerManager, or DealerStaff)
       const roleUpper = response.role.toUpperCase()
       if (
         roleUpper !== 'ADMIN' &&
-        roleUpper !== 'EVMMANAGER' &&
-        roleUpper !== 'EVMSTAFF'
+        roleUpper !== 'EVMSTAFF' &&
+        roleUpper !== 'DEALERMANAGER' &&
+        roleUpper !== 'DEALERSTAFF'
       ) {
-        throw new Error('Access denied. CMS login is only for Admin, EVMManager, and EVMStaff.')
+        throw new Error('Access denied. CMS login is only for Admin, EVMStaff, DealerManager, and DealerStaff.')
       }
 
       // Parse JWT to get user info

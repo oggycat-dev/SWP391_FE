@@ -118,7 +118,7 @@ export const RoleBasedRoute = ({
 }
 
 // ============================================================================
-// CMS Route - Admin, EVMStaff, or EVMManager Only
+// CMS Route - All 4 Main Roles
 // ============================================================================
 
 interface CmsRouteProps {
@@ -136,7 +136,37 @@ export const CmsRoute = ({
 }: CmsRouteProps) => {
   return (
     <RoleBasedRoute
-      allowedRoles={['Admin', 'EVMStaff', 'EVMManager']}
+      allowedRoles={['Admin', 'EVMStaff', 'DealerManager', 'DealerStaff']}
+      userRole={userRole}
+      isAuthenticated={isAuthenticated}
+      isLoading={isLoading}
+      redirectTo="/unauthorized"
+    >
+      {children}
+    </RoleBasedRoute>
+  )
+}
+
+// ============================================================================
+// EVM Route - Admin and EVMStaff Only
+// ============================================================================
+
+interface EvmRouteProps {
+  children: ReactNode
+  userRole: Role | null
+  isAuthenticated: boolean
+  isLoading?: boolean
+}
+
+export const EvmRoute = ({ 
+  children, 
+  userRole, 
+  isAuthenticated, 
+  isLoading 
+}: EvmRouteProps) => {
+  return (
+    <RoleBasedRoute
+      allowedRoles={['Admin', 'EVMStaff']}
       userRole={userRole}
       isAuthenticated={isAuthenticated}
       isLoading={isLoading}
@@ -167,36 +197,6 @@ export const DealerRoute = ({
   return (
     <RoleBasedRoute
       allowedRoles={['DealerManager', 'DealerStaff']}
-      userRole={userRole}
-      isAuthenticated={isAuthenticated}
-      isLoading={isLoading}
-      redirectTo="/unauthorized"
-    >
-      {children}
-    </RoleBasedRoute>
-  )
-}
-
-// ============================================================================
-// Customer Route - Customer Only
-// ============================================================================
-
-interface CustomerRouteProps {
-  children: ReactNode
-  userRole: Role | null
-  isAuthenticated: boolean
-  isLoading?: boolean
-}
-
-export const CustomerRoute = ({ 
-  children, 
-  userRole, 
-  isAuthenticated, 
-  isLoading 
-}: CustomerRouteProps) => {
-  return (
-    <RoleBasedRoute
-      allowedRoles={['Customer']}
       userRole={userRole}
       isAuthenticated={isAuthenticated}
       isLoading={isLoading}

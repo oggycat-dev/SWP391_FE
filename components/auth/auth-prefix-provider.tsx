@@ -1,6 +1,6 @@
 /**
- * AuthPrefixProvider - Determines API prefix (cms/dealer/customer) based on user role
- * Following chemistry-subject-web architecture pattern
+ * AuthPrefixProvider - Determines API prefix (cms) based on user role
+ * All 4 roles (Admin, EVMStaff, DealerManager, DealerStaff) use CMS API
  */
 
 'use client'
@@ -12,9 +12,9 @@ import type { Role } from '@/lib/types'
 interface AuthPrefixContextValue {
   prefix: ApiPrefix
   isCmsUser: boolean
+  isEvmUser: boolean
   isDealerUser: boolean
-  isCustomerUser: boolean
-  basePath: string // Route base path: /cms, /dealer, or /customer
+  basePath: string
 }
 
 const AuthPrefixContext = createContext<AuthPrefixContextValue | undefined>(undefined)
@@ -26,48 +26,35 @@ interface AuthPrefixProviderProps {
 
 export const AuthPrefixProvider = ({ children, userRole }: AuthPrefixProviderProps) => {
   const value = useMemo((): AuthPrefixContextValue => {
-    // If no user role, default to cms (for login attempt)
+    // If no user role, default to cms
     if (!userRole) {
       return {
         prefix: 'cms',
         isCmsUser: false,
+        isEvmUser: false,
         isDealerUser: false,
-        isCustomerUser: false,
         basePath: '/dashboard',
       }
     }
 
-    // Check user role and determine prefix
+    // Check user role and determine flags
     const roleUpper = userRole.toUpperCase()
-    const isCmsUser = 
-      roleUpper === 'ADMIN' || 
-      roleUpper === 'EVMSTAFF' || 
-      roleUpper === 'EVMMANAGER'
-    const isDealerUser = 
-      roleUpper === 'DEALERMANAGER' || 
-      roleUpper === 'DEALERSTAFF'
-    const isCustomerUser = roleUpper === 'CUSTOMER'
+    const isAdmin = roleUpper === 'ADMIN'
+    const isEvmStaff = roleUpper === 'EVMSTAFF'
+    const isDealerManager = roleUpper === 'DEALERMANAGER'
+    const isDealerStaff = roleUpper === 'DEALERSTAFF'
+    
+    const isCmsUser = isAdmin || isEvmStaff || isDealerManager || isDealerStaff
+    const isEvmUser = isAdmin || isEvmStaff
+    const isDealerUser = isDealerManager || isDealerStaff
 
-    let prefix: ApiPrefix = 'cms'
-    let basePath = '/dashboard'
-
-    if (isCmsUser) {
-      prefix = 'cms'
-      basePath = '/dashboard'
-    } else if (isDealerUser) {
-      prefix = 'dealer'
-      basePath = '/dashboard'
-    } else if (isCustomerUser) {
-      prefix = 'customer'
-      basePath = '/dashboard'
-    }
-
+    // All users use CMS API prefix
     return {
-      prefix,
+      prefix: 'cms',
       isCmsUser,
+      isEvmUser,
       isDealerUser,
-      isCustomerUser,
-      basePath,
+      basePath: '/dashboard',
     }
   }, [userRole])
 
@@ -87,23 +74,12 @@ export const useAuthPrefix = () => {
 
 /**
  * Hook to get API endpoint with correct prefix
- * @param cmsEndpoint - Endpoint for CMS users (without /api/cms prefix)
- * @param dealerEndpoint - Endpoint for Dealer users (without /api/dealer prefix)
- * @param customerEndpoint - Endpoint for Customer users (without /api/customer prefix)
+ * All users use CMS API endpoints
+ * @param endpoint - Endpoint path (without /api/cms prefix)
  * @returns Full endpoint path with prefix
  */
-export const useApiEndpoint = (
-  cmsEndpoint: string,
-  dealerEndpoint: string,
-  customerEndpoint: string
-) => {
+export const useApiEndpoint = (endpoint: string) => {
   const { prefix } = useAuthPrefix()
-  if (prefix === 'cms') {
-    return `/api/cms${cmsEndpoint}`
-  } else if (prefix === 'dealer') {
-    return `/api/dealer${dealerEndpoint}`
-  } else {
-    return `/api/customer${customerEndpoint}`
-  }
+  return `/api/${prefix}${endpoint}`
 }
 

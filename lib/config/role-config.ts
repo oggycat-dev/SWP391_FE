@@ -18,28 +18,29 @@ export interface RouteConfig {
 }
 
 export const ROUTE_ACCESS: Record<string, Role[]> = {
-  // Dashboard - All authenticated users
-  '/dashboard': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],
+  // Dashboard - All authenticated users (except Customer)
+  '/dashboard': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
 
-  // CMS routes (Admin, EVMStaff, EVMManager)
-  '/dashboard/vehicles': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],
+  // CMS routes - Admin & EVM roles
+  '/dashboard/vehicles': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
   '/dashboard/inventory': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
   '/dashboard/dealers': ['Admin', 'EVMStaff', 'EVMManager'],
+  '/dashboard/dealers/contracts': ['Admin', 'EVMManager'],
   '/dashboard/promotions': ['Admin', 'EVMStaff', 'EVMManager'],
   '/dashboard/reports': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager'],
 
   // Admin-only routes
   '/dashboard/users': ['Admin'],
 
-  // Shared routes - Multiple roles can access
-  '/dashboard/customers': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
-  '/dashboard/orders': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],
-  '/dashboard/payments': ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
+  // Dealer routes - EVMStaff, Dealer roles (NOT Admin)
+  '/dashboard/customers': ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
+  '/dashboard/orders': ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
+  '/dashboard/payments': ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
   '/dashboard/inventory/request': ['DealerManager', 'DealerStaff'],
 
   // Dealer-only routes
   '/dashboard/quotations': ['DealerManager', 'DealerStaff'],
-  '/dashboard/test-drives': ['DealerManager', 'DealerStaff', 'Customer'],
+  '/dashboard/test-drives': ['DealerManager', 'DealerStaff'],
 } as const
 
 // ============================================================================
@@ -49,7 +50,7 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
 export const FEATURE_PERMISSIONS = {
   // Vehicle Management
   canManageVehicles: ['Admin', 'EVMStaff', 'EVMManager'],
-  canViewVehicles: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],
+  canViewVehicles: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
   canEditVehicles: ['Admin', 'EVMStaff', 'EVMManager'],
 
   // Inventory Management
@@ -58,33 +59,33 @@ export const FEATURE_PERMISSIONS = {
   canRequestVehicles: ['DealerManager', 'DealerStaff'],
 
   // Dealer Management
-  canManageDealers: ['Admin', 'EVMStaff', 'EVMManager'],
-  canViewDealers: ['Admin', 'EVMStaff', 'EVMManager'],
+  canManageDealers: ['Admin', 'EVMManager'], // Create dealers
+  canViewDealers: ['Admin', 'EVMStaff', 'EVMManager'], // View dealers
 
   // Order Management
-  canManageOrders: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
-  canViewOrders: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],
+  canManageOrders: ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
+  canViewOrders: ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
   canCreateOrders: ['DealerManager', 'DealerStaff'],
+  canApproveOrders: ['DealerManager'], // Only manager can approve
 
   // Quotation Management
   canManageQuotations: ['DealerManager', 'DealerStaff'],
-  canViewQuotations: ['DealerManager', 'DealerStaff', 'Customer'],
+  canViewQuotations: ['DealerManager', 'DealerStaff'],
 
   // Customer Management
-  canManageCustomers: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
-  canViewCustomers: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
+  canManageCustomers: ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
+  canViewCustomers: ['EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
 
   // Test Drive Management
   canManageTestDrives: ['DealerManager', 'DealerStaff'],
-  canViewTestDrives: ['DealerManager', 'DealerStaff', 'Customer'],
-  canRequestTestDrives: ['Customer'],
+  canViewTestDrives: ['DealerManager', 'DealerStaff'],
 
   // Promotion Management
-  canManagePromotions: ['Admin', 'EVMStaff', 'EVMManager'],
-  canViewPromotions: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'],
+  canManagePromotions: ['Admin', 'EVMManager'], // SalesManager in backend
+  canViewPromotions: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff'],
 
   // Reports
-  canViewReports: ['Admin', 'EVMStaff', 'EVMManager'],
+  canViewReports: ['Admin', 'EVMStaff', 'EVMManager', 'DealerManager'],
 } as const
 
 // ============================================================================
@@ -115,12 +116,19 @@ export const getDefaultRouteByRole = (role: Role | null): string => {
   
   const roleUpper = role.toUpperCase()
   
+  // Admin and EVM roles - CMS Dashboard
   if (roleUpper === 'ADMIN' || roleUpper === 'EVMSTAFF' || roleUpper === 'EVMMANAGER') {
     return '/dashboard'
-  } else if (roleUpper === 'DEALERMANAGER' || roleUpper === 'DEALERSTAFF') {
+  }
+  
+  // Dealer roles - Dealer Dashboard
+  if (roleUpper === 'DEALERMANAGER' || roleUpper === 'DEALERSTAFF') {
     return '/dashboard'
-  } else if (roleUpper === 'CUSTOMER') {
-    return '/dashboard'
+  }
+  
+  // Customer - Customer portal (if implemented)
+  if (roleUpper === 'CUSTOMER') {
+    return '/customer/dashboard'
   }
   
   return '/dashboard'

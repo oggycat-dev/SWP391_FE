@@ -1,6 +1,6 @@
 /**
  * User Role Enumeration
- * Maps to backend UserRole enum
+ * Maps to backend UserRole enum exactly
  */
 export enum UserRole {
   Admin = 0,
@@ -13,17 +13,39 @@ export enum UserRole {
 
 /**
  * Role string type for type safety
+ * Frontend uses these 6 roles to match backend
  */
 export type UserRoleString = 
   | 'Admin' 
-  | 'EVMStaff' 
-  | 'EVMManager' 
+  | 'EVMStaff'
+  | 'EVMManager'
   | 'DealerManager' 
-  | 'DealerStaff' 
+  | 'DealerStaff'
   | 'Customer'
 
 /**
  * API Prefix type
+ * CMS for Admin/EVM roles, Dealer for dealer roles, Customer for customer portal
  */
 export type ApiPrefix = 'cms' | 'dealer' | 'customer'
+
+/**
+ * Status Enumeration
+ * Maps to backend Status enum
+ */
+export enum Status {
+  Inactive = 0,
+  Active = 1,
+  Pending = 2,
+  Suspended = 3,
+}
+
+/**
+ * Status string type for type safety
+ */
+export type StatusString = 
+  | 'Inactive'
+  | 'Active' 
+  | 'Pending'
+  | 'Suspended'
 

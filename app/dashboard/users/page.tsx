@@ -40,6 +40,24 @@ const ROLE_BADGE_VARIANTS: Record<string, "default" | "secondary" | "destructive
   Customer: "outline",
 }
 
+// Map role number to display name
+const getRoleName = (role: string | number): string => {
+  // If role is already a string, return it
+  if (typeof role === 'string') return role
+
+  // Map number to role name
+  const roleMap: Record<number, string> = {
+    0: 'Admin',
+    1: 'EVM Staff',
+    2: 'EVM Manager',
+    3: 'Dealer Manager',
+    4: 'Dealer Staff',
+    5: 'Customer',
+  }
+  
+  return roleMap[role] || 'Unknown'
+}
+
 function UsersPageContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
@@ -195,8 +213,8 @@ function UsersPageContent() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={ROLE_BADGE_VARIANTS[user.role] || "default"}>
-                        {user.role}
+                      <Badge variant={ROLE_BADGE_VARIANTS[getRoleName(user.role)] || "default"}>
+                        {getRoleName(user.role)}
                       </Badge>
                     </TableCell>
                     <TableCell>

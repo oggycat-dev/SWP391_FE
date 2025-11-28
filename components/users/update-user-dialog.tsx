@@ -86,18 +86,34 @@ export function UpdateUserDialog({
     }
 
     if (user && open) {
+      // Map role number to string if needed
+      const roleMap: Record<number, string> = {
+        0: 'Admin',
+        1: 'EVMStaff',
+        2: 'EVMManager',
+        3: 'DealerManager',
+        4: 'DealerStaff',
+        5: 'Customer',
+      }
+      
+      // Get role as string - handle both number and string formats
+      let mappedRole = user.role
+      if (typeof user.role === 'number') {
+        mappedRole = roleMap[user.role] || 'Customer'
+      }
+      
       // Only reset if user data is different from current form values
       const currentValues = form.getValues()
       if (
         currentValues.email !== user.email ||
         currentValues.fullName !== user.fullName ||
-        currentValues.role !== user.role
+        currentValues.role !== mappedRole
       ) {
         form.reset({
           email: user.email,
           fullName: user.fullName,
           phoneNumber: user.phoneNumber || "",
-          role: (user.role as any) || "Customer",
+          role: (mappedRole as any) || "Customer",
           dealerId: user.dealerId || "",
           isActive: user.isActive,
         })
