@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Search, FileText, Calendar, DollarSign } from "lucide-react"
+import { Plus, Search, FileText, Calendar, DollarSign, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +25,7 @@ import { useDealerContracts } from "@/hooks/use-dealer-contracts"
 import { DealerContractStatus, DealerContractDto } from "@/lib/api/dealer-contracts"
 import { CreateDealerContractDialog } from "@/components/dealers/create-dealer-contract-dialog"
 import { DealerContractDetailDialog } from "@/components/dealers/dealer-contract-detail-dialog"
+import { UpdateContractStatusDialog } from "@/components/dealers/update-contract-status-dialog"
 
 export default function DealerContractsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -32,6 +33,7 @@ export default function DealerContractsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [selectedContract, setSelectedContract] = useState<DealerContractDto | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isUpdateStatusDialogOpen, setIsUpdateStatusDialogOpen] = useState(false)
 
   const { data: contracts, isLoading } = useDealerContracts({
     status: statusFilter === "all" ? undefined : Number(statusFilter),
@@ -196,16 +198,29 @@ export default function DealerContractsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedContract(contract)
-                          setIsDetailDialogOpen(true)
-                        }}
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedContract(contract)
+                            setIsUpdateStatusDialogOpen(true)
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Update Status
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedContract(contract)
+                            setIsDetailDialogOpen(true)
+                          }}
+                        >
+                          View Details
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -226,6 +241,13 @@ export default function DealerContractsPage() {
         contract={selectedContract}
         open={isDetailDialogOpen}
         onOpenChange={setIsDetailDialogOpen}
+      />
+
+      {/* Update Contract Status Dialog */}
+      <UpdateContractStatusDialog 
+        contract={selectedContract}
+        open={isUpdateStatusDialogOpen}
+        onOpenChange={setIsUpdateStatusDialogOpen}
       />
     </div>
   )

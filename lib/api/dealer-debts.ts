@@ -1,25 +1,46 @@
 /**
  * Dealer Debts API Service
- * Handles all dealer debt-related API calls
+ * Handles all dealer debt management API calls
  */
 
 import { apiClient } from './client'
-import type { 
-  DealerDebt, 
-  CreateDealerDebtRequest, 
-  PayDealerDebtRequest 
-} from '@/lib/types/dealer'
+
+export interface DealerDebt {
+  id: string
+  dealerId: string
+  dealerName: string
+  debtAmount: number
+  paidAmount: number
+  remainingAmount: number
+  dueDate: string
+  status: 'Pending' | 'PartiallyPaid' | 'Paid' | 'Overdue'
+  notes: string
+  createdAt: string
+  lastPaymentDate?: string
+}
+
+export interface CreateDealerDebtRequest {
+  dealerId: string
+  debtAmount: number
+  dueDate: string
+  notes?: string
+}
+
+export interface PayDealerDebtRequest {
+  paymentAmount: number
+  notes?: string
+}
 
 export const dealerDebtsApi = {
   /**
-   * Get all dealer debts with optional filtering by dealerId
+   * Get all dealer debts
    */
   getDealerDebts: async (dealerId?: string): Promise<DealerDebt[]> => {
-    const params: Record<string, string> = {}
+    const queryParams: Record<string, string> = {}
     if (dealerId) {
-      params.dealerId = dealerId
+      queryParams.dealerId = dealerId
     }
-    const response = await apiClient.get<DealerDebt[]>('/api/cms/dealer-debts', params)
+    const response = await apiClient.get<DealerDebt[]>('/api/cms/dealer-debts', queryParams)
     return response
   },
 
@@ -47,3 +68,4 @@ export const dealerDebtsApi = {
     return response
   },
 }
+
