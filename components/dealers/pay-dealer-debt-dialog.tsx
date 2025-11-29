@@ -1,12 +1,11 @@
-"use client"
+/**
+ * Pay Dealer Debt Dialog Component
+ */
 
-import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Loader2 } from "lucide-react"
+'use client'
 
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from 'react'
+import { DollarSign } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,26 +13,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { usePayDealerDebt } from "@/hooks/use-dealer-debts"
-import type { DealerDebt } from "@/lib/types/dealer"
-
-const formSchema = z.object({
-  paymentAmount: z.string().min(1, "Payment amount is required"),
-  notes: z.string().optional(),
-})
-
-type FormValues = z.infer<typeof formSchema>
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { usePayDealerDebt } from '@/hooks/use-dealer-debts'
+import type { DealerDebt } from '@/lib/api/dealer-debts'
 
 interface PayDealerDebtDialogProps {
   debt: DealerDebt | null
@@ -41,147 +27,127 @@ interface PayDealerDebtDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function PayDealerDebtDialog({
-  debt,
-  open,
-  onOpenChange,
-}: PayDealerDebtDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const payMutation = usePayDealerDebt()
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      paymentAmount: "",
-      notes: "",
-    },
+export function PayDealerDebtDialog({ debt, open, onOpenChange }: PayDealerDebtDialogProps) {
+  const [formData, setFormData] = useState({
+    paymentAmount: 0,
+    notes: '',
   })
 
-  const onSubmit = async (values: FormValues) => {
+  const payDebtMutation = usePayDealerDebt()
+
+  useEffect(() => {
+    if (debt) {
+      setFormData({
+        paymentAmount: debt.remainingAmount,
+        notes: '',
+      })
+    }
+  }, [debt])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     if (!debt) return
 
-    const paymentAmount = parseFloat(values.paymentAmount)
-    if (paymentAmount > debt.remainingAmount) {
-      form.setError("paymentAmount", {
-        message: `Payment cannot exceed remaining amount (${formatCurrency(debt.remainingAmount)})`,
-      })
-      return
-    }
-
-    setIsSubmitting(true)
     try {
-      await payMutation.mutateAsync({
+      await payDebtMutation.mutateAsync({
         id: debt.id,
-        data: {
-          paymentAmount,
-          notes: values.notes,
-        },
+        data: formData,
       })
-      form.reset()
       onOpenChange(false)
     } catch (error) {
-      console.error("Failed to record payment:", error)
-    } finally {
-      setIsSubmitting(false)
+      console.error('Failed to record payment:', error)
     }
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
     }).format(amount)
   }
 
+  if (!debt) return null
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
-          <DialogDescription>
-            Record a payment for debt {debt?.debtCode}
-          </DialogDescription>
-        </DialogHeader>
-        {debt && (
-          <div className="space-y-2 rounded-lg border p-4 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Dealer:</span>
-              <span className="font-medium">{debt.dealerName}</span>
+      <DialogContent className="sm:max-w-[500px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Record Debt Payment
+            </DialogTitle>
+            <DialogDescription>
+              Record a payment for this dealer debt
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {/* Debt Summary */}
+            <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Debt:</span>
+                <span className="text-sm font-semibold">{formatCurrency(debt.debtAmount)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Already Paid:</span>
+                <span className="text-sm font-medium text-green-600">
+                  {formatCurrency(debt.paidAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t">
+                <span className="text-sm font-medium">Remaining Amount:</span>
+                <span className="text-base font-bold text-orange-600">
+                  {formatCurrency(debt.remainingAmount)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Debt:</span>
-              <span className="font-medium">{formatCurrency(debt.totalDebt)}</span>
+
+            <div className="space-y-2">
+              <Label htmlFor="paymentAmount">Payment Amount (VND) *</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                min="0"
+                max={debt.remainingAmount}
+                step="1000"
+                placeholder="Enter payment amount"
+                value={formData.paymentAmount || ''}
+                onChange={(e) => setFormData({ ...formData, paymentAmount: Number(e.target.value) })}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Maximum: {formatCurrency(debt.remainingAmount)}
+              </p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Paid Amount:</span>
-              <span className="font-medium">{formatCurrency(debt.paidAmount)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-muted-foreground">Remaining:</span>
-              <span className="font-semibold text-orange-600">
-                {formatCurrency(debt.remainingAmount)}
-              </span>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Payment Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add notes about this payment..."
+                rows={3}
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              />
             </div>
           </div>
-        )}
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="paymentAmount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Payment Amount (VND)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Add payment notes..."
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Record Payment
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={payDebtMutation.isPending || formData.paymentAmount <= 0}
+            >
+              {payDebtMutation.isPending ? 'Recording...' : 'Record Payment'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
 }
+
