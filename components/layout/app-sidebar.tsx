@@ -128,6 +128,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: "Contracts",
           url: "/dashboard/dealers/contracts",
         },
+        {
+          title: "Debts",
+          url: "/dashboard/dealers/debts",
+        },
       ],
     },
     {
