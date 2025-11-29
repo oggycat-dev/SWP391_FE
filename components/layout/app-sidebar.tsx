@@ -16,6 +16,7 @@ import {
   FileText,
   DollarSign,
   UserCog,
+  MessageSquare,
 } from "lucide-react"
 
 import { NavMain } from "@/components/layout/nav-main"
@@ -143,6 +144,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Promotions",
       url: "/dashboard/promotions",
       icon: Tag,
+    },
+    {
+      title: "Feedbacks",
+      url: "/dashboard/feedbacks",
+      icon: MessageSquare,
     },
     {
       title: "Reports",
