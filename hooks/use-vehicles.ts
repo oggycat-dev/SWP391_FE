@@ -116,28 +116,43 @@ export function useVehicleVariants(
   options?: { enabled?: boolean; refetchInterval?: number }
 ) {
   const { enabled = true, refetchInterval } = options || {}
+  
+  // Memoize params to prevent creating new object on every render
+  const paramsRef = useRef(params)
+  paramsRef.current = params
 
-  return useApi(
-    () => vehiclesApi.getVehicleVariants(params),
-    {
-      enabled,
-      refetchInterval,
-    }
+  // Memoize the API call function to prevent re-creation
+  const apiCall = useCallback(
+    () => vehiclesApi.getVehicleVariants(paramsRef.current),
+    [] // Empty deps - use ref for params
   )
+
+  return useApi(apiCall, {
+    enabled,
+    refetchInterval,
+  })
 }
 
 export function useVehicleVariant(id: string | null, options?: { enabled?: boolean }) {
   const { enabled = true } = options || {}
-
-  return useApi(
+  
+  // Use ref to store id and prevent re-creation of apiCall
+  const idRef = useRef(id)
+  idRef.current = id
+  
+  // Memoize the API call function - only recreate when id changes
+  const apiCall = useCallback(
     () => {
-      if (!id) throw new Error('Vehicle Variant ID is required')
-      return vehiclesApi.getVehicleVariantById(id)
+      const currentId = idRef.current
+      if (!currentId) throw new Error('Vehicle Variant ID is required')
+      return vehiclesApi.getVehicleVariantById(currentId)
     },
-    {
-      enabled: enabled && !!id,
-    }
+    [id] // Include id so apiCall changes when id changes
   )
+
+  return useApi(apiCall, {
+    enabled: enabled && !!id,
+  })
 }
 
 export function useCompareVehicles(variantIds: string[], options?: { enabled?: boolean }) {
@@ -190,28 +205,43 @@ export function useVehicleColors(
   options?: { enabled?: boolean; refetchInterval?: number }
 ) {
   const { enabled = true, refetchInterval } = options || {}
+  
+  // Memoize params to prevent creating new object on every render
+  const paramsRef = useRef(params)
+  paramsRef.current = params
 
-  return useApi(
-    () => vehiclesApi.getVehicleColors(params),
-    {
-      enabled,
-      refetchInterval,
-    }
+  // Memoize the API call function to prevent re-creation
+  const apiCall = useCallback(
+    () => vehiclesApi.getVehicleColors(paramsRef.current),
+    [] // Empty deps - use ref for params
   )
+
+  return useApi(apiCall, {
+    enabled,
+    refetchInterval,
+  })
 }
 
 export function useVehicleColor(id: string | null, options?: { enabled?: boolean }) {
   const { enabled = true } = options || {}
-
-  return useApi(
+  
+  // Use ref to store id and prevent re-creation of apiCall
+  const idRef = useRef(id)
+  idRef.current = id
+  
+  // Memoize the API call function - only recreate when id changes
+  const apiCall = useCallback(
     () => {
-      if (!id) throw new Error('Vehicle Color ID is required')
-      return vehiclesApi.getVehicleColorById(id)
+      const currentId = idRef.current
+      if (!currentId) throw new Error('Vehicle Color ID is required')
+      return vehiclesApi.getVehicleColorById(currentId)
     },
-    {
-      enabled: enabled && !!id,
-    }
+    [id] // Include id so apiCall changes when id changes
   )
+
+  return useApi(apiCall, {
+    enabled: enabled && !!id,
+  })
 }
 
 export function useCreateVehicleColor() {

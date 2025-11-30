@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -19,6 +19,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,9 +28,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { useVehicleModel, useUpdateVehicleModel } from "@/hooks/use-vehicles"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, X, Upload } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { type VehicleCategoryString } from "@/lib/types/enums"
+import Image from "next/image"
 
 const vehicleModelSchema = z.object({
   modelName: z.string().min(1, "Model name is required").max(200, "Model name must not exceed 200 characters"),
@@ -40,7 +42,8 @@ const vehicleModelSchema = z.object({
   year: z.number().min(2001, "Year must be greater than 2000"),
   basePrice: z.number().min(0.01, "Base price must be greater than 0"),
   description: z.string().optional(),
-  imageUrls: z.array(z.string().url("Invalid URL")).optional().default([]),
+  existingImageUrls: z.array(z.string()).optional().default([]),
+  newImages: z.array(z.instanceof(File)).optional().default([]),
   brochureUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
   isActive: z.boolean(),
 })
@@ -75,6 +78,7 @@ export function UpdateVehicleModelDialog({
 
   const processedModelIdRef = useRef<string | null>(null)
   const isMountedRef = useRef(true)
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([])
 
   const form = useForm<VehicleModelFormValues>({
     resolver: zodResolver(vehicleModelSchema),
@@ -85,11 +89,53 @@ export function UpdateVehicleModelDialog({
       year: new Date().getFullYear(),
       basePrice: 0,
       description: "",
-      imageUrls: [],
+      existingImageUrls: [],
+      newImages: [],
       brochureUrl: "",
       isActive: true,
     },
   })
+
+  const handleNewImageChange = (files: FileList | null) => {
+    if (!files) return
+    
+    const fileArray = Array.from(files)
+    const validFiles = fileArray.filter(file => file.type.startsWith('image/'))
+    
+    if (validFiles.length !== fileArray.length) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please select only image files",
+      })
+    }
+    
+    const currentNewImages = form.getValues('newImages') || []
+    const allNewImages = [...currentNewImages, ...validFiles]
+    form.setValue('newImages', allNewImages, { shouldValidate: true })
+    
+    // Create previews
+    const previews = validFiles.map(file => URL.createObjectURL(file))
+    setNewImagePreviews(prev => [...prev, ...previews])
+  }
+
+  const removeNewImage = (index: number) => {
+    const currentNewImages = form.getValues('newImages') || []
+    const newImages = currentNewImages.filter((_, i) => i !== index)
+    form.setValue('newImages', newImages, { shouldValidate: true })
+    
+    // Update previews
+    const newPreviews = newImagePreviews.filter((_, i) => i !== index)
+    // Revoke old URL
+    URL.revokeObjectURL(newImagePreviews[index])
+    setNewImagePreviews(newPreviews)
+  }
+
+  const removeExistingImage = (index: number) => {
+    const currentExisting = form.getValues('existingImageUrls') || []
+    const newExisting = currentExisting.filter((_, i) => i !== index)
+    form.setValue('existingImageUrls', newExisting, { shouldValidate: true })
+  }
 
   useEffect(() => {
     isMountedRef.current = true
@@ -101,6 +147,9 @@ export function UpdateVehicleModelDialog({
   useEffect(() => {
     if (!open) {
       processedModelIdRef.current = null
+      // Clean up preview URLs
+      newImagePreviews.forEach(url => URL.revokeObjectURL(url))
+      setNewImagePreviews([])
       form.reset({
         modelName: "",
         brand: "",
@@ -108,7 +157,8 @@ export function UpdateVehicleModelDialog({
         year: new Date().getFullYear(),
         basePrice: 0,
         description: "",
-        imageUrls: [],
+        existingImageUrls: [],
+        newImages: [],
         brochureUrl: "",
         isActive: true,
       })
@@ -132,7 +182,8 @@ export function UpdateVehicleModelDialog({
       year: model.year || new Date().getFullYear(),
       basePrice: model.basePrice || 0,
       description: model.description || "",
-      imageUrls: model.imageUrls || [],
+      existingImageUrls: model.imageUrls || [],
+      newImages: [] as File[],
       brochureUrl: model.brochureUrl || "",
       isActive: model.isActive ?? true,
     }
@@ -147,7 +198,8 @@ export function UpdateVehicleModelDialog({
         form.setValue('year', formData.year, { shouldValidate: false, shouldDirty: false })
         form.setValue('basePrice', formData.basePrice, { shouldValidate: false, shouldDirty: false })
         form.setValue('description', formData.description, { shouldValidate: false, shouldDirty: false })
-        form.setValue('imageUrls', formData.imageUrls, { shouldValidate: false, shouldDirty: false })
+        form.setValue('existingImageUrls', formData.existingImageUrls, { shouldValidate: false, shouldDirty: false })
+        form.setValue('newImages', formData.newImages, { shouldValidate: false, shouldDirty: false })
         form.setValue('brochureUrl', formData.brochureUrl, { shouldValidate: false, shouldDirty: false })
         form.setValue('isActive', formData.isActive, { shouldValidate: false, shouldDirty: false })
       }
@@ -165,7 +217,8 @@ export function UpdateVehicleModelDialog({
           year: data.year,
           basePrice: data.basePrice,
           description: data.description || "",
-          imageUrls: data.imageUrls || [],
+          existingImageUrls: data.existingImageUrls || [],
+          newImages: data.newImages || [],
           brochureUrl: data.brochureUrl || "",
           isActive: data.isActive,
         },
@@ -176,6 +229,9 @@ export function UpdateVehicleModelDialog({
         description: "Vehicle model updated successfully",
       })
 
+      // Clean up preview URLs
+      newImagePreviews.forEach(url => URL.revokeObjectURL(url))
+      setNewImagePreviews([])
       onOpenChange(false)
       
       setTimeout(() => {
@@ -319,6 +375,97 @@ export function UpdateVehicleModelDialog({
                     <FormControl>
                       <Textarea placeholder="Vehicle description..." {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="existingImageUrls"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Existing Images</FormLabel>
+                    <FormControl>
+                      {field.value && field.value.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-4">
+                          {field.value.map((url, index) => (
+                            <div key={index} className="relative aspect-video w-full overflow-hidden rounded-md border">
+                              <Image
+                                src={url}
+                                alt={`Existing image ${index + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute right-2 top-2 h-6 w-6"
+                                onClick={() => removeExistingImage(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No existing images</p>
+                      )}
+                    </FormControl>
+                    <FormDescription>
+                      Click X to remove existing images
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="newImages"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Add New Images</FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            handleNewImageChange(e.target.files)
+                          }}
+                          className="cursor-pointer"
+                        />
+                        {newImagePreviews.length > 0 && (
+                          <div className="grid grid-cols-2 gap-4">
+                            {newImagePreviews.map((preview, index) => (
+                              <div key={index} className="relative aspect-video w-full overflow-hidden rounded-md border">
+                                <Image
+                                  src={preview}
+                                  alt={`New preview ${index + 1}`}
+                                  fill
+                                  className="object-cover"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute right-2 top-2 h-6 w-6"
+                                  onClick={() => removeNewImage(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Upload new images to add to this vehicle model
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

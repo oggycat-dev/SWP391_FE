@@ -65,8 +65,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           url: "/dashboard/vehicles/models",
         },
         {
-          title: "Variants & Colors",
+          title: "Variants",
           url: "/dashboard/vehicles/variants",
+        },
+        {
+          title: "Colors",
+          url: "/dashboard/vehicles/colors",
         },
         {
           title: "Inventory",

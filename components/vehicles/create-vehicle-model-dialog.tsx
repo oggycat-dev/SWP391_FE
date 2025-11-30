@@ -28,8 +28,9 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCreateVehicleModel } from "@/hooks/use-vehicles"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, X, Upload } from "lucide-react"
 import { VehicleCategory, type VehicleCategoryString } from "@/lib/types/enums"
+import Image from "next/image"
 
 const vehicleModelSchema = z.object({
   modelCode: z.string().min(1, "Model code is required").max(50, "Model code must not exceed 50 characters"),
@@ -41,7 +42,7 @@ const vehicleModelSchema = z.object({
   year: z.number().min(2001, "Year must be greater than 2000").max(new Date().getFullYear() + 1, "Year cannot be in the future"),
   basePrice: z.number().min(0.01, "Base price must be greater than 0"),
   description: z.string().optional(),
-  imageUrls: z.array(z.string().url("Invalid URL")).optional().default([]),
+  images: z.array(z.instanceof(File)).optional().default([]),
   brochureUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
 })
 
@@ -86,10 +87,47 @@ export function CreateVehicleModelDialog({
       year: new Date().getFullYear(),
       basePrice: 0,
       description: "",
-      imageUrls: [],
+      images: [],
       brochureUrl: "",
     },
   })
+
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+
+  const handleImageChange = (files: FileList | null) => {
+    if (!files) return
+    
+    const fileArray = Array.from(files)
+    const validFiles = fileArray.filter(file => file.type.startsWith('image/'))
+    
+    if (validFiles.length !== fileArray.length) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please select only image files",
+      })
+    }
+    
+    const currentImages = form.getValues('images') || []
+    const allImages = [...currentImages, ...validFiles]
+    form.setValue('images', allImages, { shouldValidate: true })
+    
+    // Create previews for new files only
+    const newPreviews = validFiles.map(file => URL.createObjectURL(file))
+    setImagePreviews(prev => [...prev, ...newPreviews])
+  }
+
+  const removeImage = (index: number) => {
+    const currentImages = form.getValues('images') || []
+    const newImages = currentImages.filter((_, i) => i !== index)
+    form.setValue('images', newImages, { shouldValidate: true })
+    
+    // Update previews
+    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    // Revoke old URL
+    URL.revokeObjectURL(imagePreviews[index])
+    setImagePreviews(newPreviews)
+  }
 
   const onSubmit = async (data: VehicleModelFormValues) => {
     try {
@@ -101,7 +139,7 @@ export function CreateVehicleModelDialog({
         year: data.year,
         basePrice: data.basePrice,
         description: data.description || "",
-        imageUrls: data.imageUrls || [],
+        images: data.images || [],
         brochureUrl: data.brochureUrl || "",
       })
 
@@ -110,7 +148,10 @@ export function CreateVehicleModelDialog({
         description: "Vehicle model created successfully",
       })
 
+      // Clean up preview URLs
+      imagePreviews.forEach(url => URL.revokeObjectURL(url))
       form.reset()
+      setImagePreviews([])
       setOpen(false)
       onSuccess?.()
     } catch (error: any) {
@@ -254,6 +295,59 @@ export function CreateVehicleModelDialog({
                   <FormControl>
                     <Textarea placeholder="Vehicle description..." {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="images"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Images</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                          const currentFiles = field.value || []
+                          const newFiles = Array.from(e.target.files || [])
+                          const allFiles = [...currentFiles, ...newFiles]
+                          handleImageChange({ ...e.target.files, length: allFiles.length } as FileList)
+                        }}
+                        className="cursor-pointer"
+                      />
+                      {imagePreviews.length > 0 && (
+                        <div className="grid grid-cols-2 gap-4">
+                          {imagePreviews.map((preview, index) => (
+                            <div key={index} className="relative aspect-video w-full overflow-hidden rounded-md border">
+                              <Image
+                                src={preview}
+                                alt={`Preview ${index + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute right-2 top-2 h-6 w-6"
+                                onClick={() => removeImage(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Upload multiple images for this vehicle model
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
