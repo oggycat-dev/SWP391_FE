@@ -6,7 +6,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { dealersApi, type CreateDealerRequest } from '@/lib/api/dealers'
+import { dealersApi, type CreateDealerRequest, type UpdateDealerRequest } from '@/lib/api/dealers'
 import { useToast } from './use-toast'
 
 export const useDealers = (params?: {
@@ -47,6 +47,53 @@ export const useCreateDealer = () => {
       toast({
         title: 'Error',
         description: error?.message || 'Failed to create dealer',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export const useUpdateDealer = () => {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (data: UpdateDealerRequest) => dealersApi.updateDealer(data),
+    onSuccess: (_data: unknown, variables: UpdateDealerRequest) => {
+      queryClient.invalidateQueries({ queryKey: ['dealers'] })
+      queryClient.invalidateQueries({ queryKey: ['dealer', variables.id] })
+      toast({
+        title: 'Success',
+        description: 'Dealer updated successfully',
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to update dealer',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export const useDeleteDealer = () => {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (id: string) => dealersApi.deleteDealer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dealers'] })
+      toast({
+        title: 'Success',
+        description: 'Dealer deleted successfully',
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to delete dealer',
         variant: 'destructive',
       })
     },

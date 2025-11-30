@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Search, MapPin, Phone, Mail, Building2, DollarSign } from "lucide-react"
+import { Plus, Search, MapPin, Phone, Mail, Building2, DollarSign, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,19 +14,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { CreateDealerDialog } from "@/components/dealers/create-dealer-dialog"
-import { DealerDetailDialog } from "@/components/dealers/dealer-detail-dialog"
-import { useDealers } from "@/hooks/use-dealers"
+import { useDealers, useDeleteDealer } from "@/hooks/use-dealers"
+import { useRouter } from 'next/navigation'
 import type { Dealer } from "@/lib/api/dealers"
 
 export default function DealersPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [cityFilter, setCityFilter] = useState<string>("all")
   const [pageNumber, setPageNumber] = useState(1)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [selectedDealerId, setSelectedDealerId] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [dealerToDelete, setDealerToDelete] = useState<string | null>(null)
 
   const { data: dealersData, isLoading } = useDealers({
     searchTerm,
@@ -36,13 +47,28 @@ export default function DealersPage() {
     pageSize: 12,
   })
 
+  const deleteDealer = useDeleteDealer()
+
   const handleCreateNew = () => {
     setDialogOpen(true)
   }
 
   const handleViewDetails = (dealerId: string) => {
-    setSelectedDealerId(dealerId)
-    setDetailDialogOpen(true)
+    router.push(`/dashboard/dealers/${dealerId}`)
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, dealerId: string) => {
+    e.stopPropagation()
+    setDealerToDelete(dealerId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (dealerToDelete) {
+      await deleteDealer.mutateAsync(dealerToDelete)
+      setDeleteDialogOpen(false)
+      setDealerToDelete(null)
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -178,12 +204,40 @@ export default function DealersPage() {
                       </span>
                     </div>
                   </div>
+                  <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={(e) => handleDeleteClick(e, dealer.id)}
+                      className="gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will deactivate the dealer. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {dealersData && dealersData.totalCount > 12 && (
         <div className="flex items-center justify-center gap-2 mt-4">
@@ -210,12 +264,6 @@ export default function DealersPage() {
       <CreateDealerDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-      />
-
-      <DealerDetailDialog
-        dealerId={selectedDealerId}
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
       />
     </div>
   )

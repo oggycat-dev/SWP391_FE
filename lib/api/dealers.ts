@@ -34,8 +34,15 @@ export interface CreateDealerRequest {
   debtLimit: number
 }
 
-export interface UpdateDealerRequest extends Partial<CreateDealerRequest> {
-  status?: string
+export interface UpdateDealerRequest {
+  id: string
+  dealerName: string
+  address: string
+  city: string
+  district: string
+  phoneNumber: string
+  email: string
+  debtLimit: number
 }
 
 export interface DealersResponse {
@@ -83,6 +90,22 @@ export const dealersApi = {
    */
   createDealer: async (data: CreateDealerRequest): Promise<Dealer> => {
     const response = await apiClient.post<Dealer>('/api/cms/dealers', data)
+    return response
+  },
+
+  /**
+   * Update dealer information
+   */
+  updateDealer: async (data: UpdateDealerRequest): Promise<Dealer> => {
+    const response = await apiClient.put<Dealer>(`/api/cms/dealers/${data.id}`, data)
+    return response
+  },
+
+  /**
+   * Delete (soft delete) dealer
+   */
+  deleteDealer: async (id: string): Promise<boolean> => {
+    const response = await apiClient.delete<boolean>(`/api/cms/dealers/${id}`)
     return response
   },
 

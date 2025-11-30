@@ -85,21 +85,20 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <Zap className="h-8 w-8 text-primary-foreground" />
+      <Card className="w-full max-w-md shadow-lg border-2">
+        <CardHeader className="space-y-6 text-center pb-8">
+          <div className="flex justify-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-black shadow-lg">
+              <Zap className="h-12 w-12 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">EV Dealer System</CardTitle>
-          <CardDescription>Enter your credentials to access the management portal</CardDescription>
+          <CardTitle className="text-3xl font-bold tracking-tight">EV Dealer System</CardTitle>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5 px-8">
             <div className="space-y-2">
-              <Label htmlFor="email">Email / Username</Label>
+              <Label htmlFor="email" className="text-sm font-medium">Email / Username</Label>
               <Input
                 id="email"
                 type="text"
@@ -107,10 +106,11 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -118,23 +118,17 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
           </CardContent>
-          <CardFooter>
-            <Button className="w-full" type="submit" disabled={isLoading}>
+          <CardFooter className="px-8 pt-6 pb-8">
+            <Button className="w-full h-11 text-base font-medium bg-black hover:bg-gray-800" type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </CardFooter>
         </form>
-        
-        <div className="px-8 pb-8 text-center text-xs text-muted-foreground">
-          <p className="mb-2 font-medium">Authorized Roles:</p>
-          <div className="mt-2 space-y-1">
-            <p className="text-muted-foreground">Admin • EVM Staff • Dealer Manager • Dealer Staff</p>
-          </div>
-        </div>
       </Card>
     </div>
   )
