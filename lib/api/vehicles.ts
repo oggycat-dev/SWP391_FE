@@ -35,8 +35,8 @@ export interface CreateVehicleModelRequest {
   year: number
   basePrice: number
   description: string
-  imageUrls: string[]
-  brochureUrl: string
+  images?: File[] // Files to upload
+  brochureUrl?: string
 }
 
 export interface UpdateVehicleModelRequest {
@@ -46,18 +46,19 @@ export interface UpdateVehicleModelRequest {
   year: number
   basePrice: number
   description: string
-  imageUrls: string[]
-  brochureUrl: string
+  newImages?: File[] // New files to upload
+  existingImageUrls?: string[] // URLs of existing images to keep
+  brochureUrl?: string
   isActive: boolean
 }
 
 export interface GetVehicleModelsParams {
   brand?: string
   category?: string
-  year?: number
   isActive?: boolean
-  page?: number
+  pageNumber?: number // Backend uses PageNumber (1-based)
   pageSize?: number
+  searchTerm?: string // Backend uses SearchTerm
 }
 
 // ============================================================================
@@ -94,8 +95,9 @@ export interface UpdateVehicleVariantRequest {
 export interface GetVehicleVariantsParams {
   modelId?: string
   isActive?: boolean
-  page?: number
+  pageNumber?: number // Backend uses PageNumber (1-based)
   pageSize?: number
+  searchTerm?: string // Backend uses SearchTerm
 }
 
 // ============================================================================
@@ -118,22 +120,23 @@ export interface CreateVehicleColorRequest {
   colorName: string
   colorCode: string
   additionalPrice: number
-  imageUrl: string
+  image?: File // File to upload
 }
 
 export interface UpdateVehicleColorRequest {
   colorName: string
   colorCode: string
   additionalPrice: number
-  imageUrl: string
+  image?: File // New file to upload (optional)
   isActive: boolean
 }
 
 export interface GetVehicleColorsParams {
   variantId?: string
   isActive?: boolean
-  page?: number
+  pageNumber?: number // Backend uses PageNumber (1-based)
   pageSize?: number
+  searchTerm?: string // Backend uses SearchTerm
 }
 
 // ============================================================================
@@ -212,9 +215,13 @@ export interface GetCentralInventoryParams {
 export interface PaginatedResult<T> {
   items: T[]
   totalCount: number
-  page: number
+  page: number // Frontend format (mapped from pageNumber)
   pageSize: number
   totalPages: number
+  // Backend format (optional, for reference)
+  pageNumber?: number // Backend uses PageNumber
+  hasPreviousPage?: boolean
+  hasNextPage?: boolean
 }
 
 // ============================================================================
@@ -236,16 +243,34 @@ export const vehiclesApi = {
     const queryParams: Record<string, string> = {}
     if (params?.brand) queryParams.brand = params.brand
     if (params?.category) queryParams.category = params.category
-    if (params?.year) queryParams.year = String(params.year)
     if (params?.isActive !== undefined) queryParams.isActive = String(params.isActive)
-    if (params?.page) queryParams.page = String(params.page)
+    if (params?.pageNumber) queryParams.pageNumber = String(params.pageNumber) // Backend expects PageNumber
     if (params?.pageSize) queryParams.pageSize = String(params.pageSize)
+    if (params?.searchTerm) queryParams.searchTerm = params.searchTerm
 
-    return apiClient.get<PaginatedResult<VehicleModelDto>>(
-      VEHICLE_ENDPOINTS.CMS.MODELS,
-      queryParams,
-      signal
-    )
+    // Backend returns PaginatedResult with: Items, TotalCount, PageNumber, PageSize, TotalPages
+    // We need to map it to frontend format
+    const response = await apiClient.get<{
+      items: VehicleModelDto[]
+      totalCount: number
+      pageNumber: number
+      pageSize: number
+      totalPages: number
+      hasPreviousPage?: boolean
+      hasNextPage?: boolean
+    }>(VEHICLE_ENDPOINTS.CMS.MODELS, queryParams, signal)
+    
+    // Map backend response to frontend format
+    return {
+      items: response.items || [],
+      totalCount: response.totalCount || 0,
+      page: response.pageNumber || 1,
+      pageSize: response.pageSize || 10,
+      totalPages: response.totalPages || 0,
+      pageNumber: response.pageNumber, // Keep for reference
+      hasPreviousPage: response.hasPreviousPage,
+      hasNextPage: response.hasNextPage,
+    }
   },
 
   /**
@@ -262,7 +287,26 @@ export const vehiclesApi = {
     data: CreateVehicleModelRequest,
     signal?: AbortSignal
   ): Promise<VehicleModelDto> => {
-    return apiClient.post<VehicleModelDto>(VEHICLE_ENDPOINTS.CMS.MODELS, data, signal)
+    const formData = new FormData()
+    formData.append('ModelCode', data.modelCode)
+    formData.append('ModelName', data.modelName)
+    formData.append('Brand', data.brand)
+    formData.append('Category', data.category)
+    formData.append('Year', data.year.toString())
+    formData.append('BasePrice', data.basePrice.toString())
+    formData.append('Description', data.description || '')
+    
+    if (data.images && data.images.length > 0) {
+      data.images.forEach((image) => {
+        formData.append('Images', image)
+      })
+    }
+    
+    if (data.brochureUrl) {
+      formData.append('BrochureUrl', data.brochureUrl)
+    }
+
+    return apiClient.post<VehicleModelDto>(VEHICLE_ENDPOINTS.CMS.MODELS, formData, signal, true)
   },
 
   /**
@@ -273,7 +317,33 @@ export const vehiclesApi = {
     data: UpdateVehicleModelRequest,
     signal?: AbortSignal
   ): Promise<VehicleModelDto> => {
-    return apiClient.put<VehicleModelDto>(VEHICLE_ENDPOINTS.CMS.MODEL_BY_ID(id), data, signal)
+    const formData = new FormData()
+    formData.append('Id', id)
+    formData.append('ModelName', data.modelName)
+    formData.append('Brand', data.brand)
+    formData.append('Category', data.category)
+    formData.append('Year', data.year.toString())
+    formData.append('BasePrice', data.basePrice.toString())
+    formData.append('Description', data.description || '')
+    formData.append('IsActive', data.isActive.toString())
+    
+    if (data.newImages && data.newImages.length > 0) {
+      data.newImages.forEach((image) => {
+        formData.append('NewImages', image)
+      })
+    }
+    
+    if (data.existingImageUrls && data.existingImageUrls.length > 0) {
+      data.existingImageUrls.forEach((url, index) => {
+        formData.append(`ExistingImageUrls[${index}]`, url)
+      })
+    }
+    
+    if (data.brochureUrl) {
+      formData.append('BrochureUrl', data.brochureUrl)
+    }
+
+    return apiClient.put<VehicleModelDto>(VEHICLE_ENDPOINTS.CMS.MODEL_BY_ID(id), formData, signal, true)
   },
 
   /**
@@ -297,14 +367,32 @@ export const vehiclesApi = {
     const queryParams: Record<string, string> = {}
     if (params?.modelId) queryParams.modelId = params.modelId
     if (params?.isActive !== undefined) queryParams.isActive = String(params.isActive)
-    if (params?.page) queryParams.page = String(params.page)
+    if (params?.pageNumber) queryParams.pageNumber = String(params.pageNumber) // Backend expects PageNumber
     if (params?.pageSize) queryParams.pageSize = String(params.pageSize)
+    if (params?.searchTerm) queryParams.searchTerm = params.searchTerm
 
-    return apiClient.get<PaginatedResult<VehicleVariantDto>>(
-      VEHICLE_ENDPOINTS.CMS.VARIANTS,
-      queryParams,
-      signal
-    )
+    // Backend returns PaginatedResult with: Items, TotalCount, PageNumber, PageSize, TotalPages
+    const response = await apiClient.get<{
+      items: VehicleVariantDto[]
+      totalCount: number
+      pageNumber: number
+      pageSize: number
+      totalPages: number
+      hasPreviousPage?: boolean
+      hasNextPage?: boolean
+    }>(VEHICLE_ENDPOINTS.CMS.VARIANTS, queryParams, signal)
+    
+    // Map backend response to frontend format
+    return {
+      items: response.items || [],
+      totalCount: response.totalCount || 0,
+      page: response.pageNumber || 1,
+      pageSize: response.pageSize || 10,
+      totalPages: response.totalPages || 0,
+      pageNumber: response.pageNumber,
+      hasPreviousPage: response.hasPreviousPage,
+      hasNextPage: response.hasNextPage,
+    }
   },
 
   /**
@@ -352,7 +440,12 @@ export const vehiclesApi = {
     data: UpdateVehicleVariantRequest,
     signal?: AbortSignal
   ): Promise<VehicleVariantDto> => {
-    return apiClient.put<VehicleVariantDto>(VEHICLE_ENDPOINTS.CMS.VARIANT_BY_ID(id), data, signal)
+    // Backend requires Id in the command body
+    const payload = {
+      id,
+      ...data,
+    }
+    return apiClient.put<VehicleVariantDto>(VEHICLE_ENDPOINTS.CMS.VARIANT_BY_ID(id), payload, signal)
   },
 
   /**
@@ -376,14 +469,32 @@ export const vehiclesApi = {
     const queryParams: Record<string, string> = {}
     if (params?.variantId) queryParams.variantId = params.variantId
     if (params?.isActive !== undefined) queryParams.isActive = String(params.isActive)
-    if (params?.page) queryParams.page = String(params.page)
+    if (params?.pageNumber) queryParams.pageNumber = String(params.pageNumber) // Backend expects PageNumber
     if (params?.pageSize) queryParams.pageSize = String(params.pageSize)
+    if (params?.searchTerm) queryParams.searchTerm = params.searchTerm
 
-    return apiClient.get<PaginatedResult<VehicleColorDto>>(
-      VEHICLE_ENDPOINTS.CMS.COLORS,
-      queryParams,
-      signal
-    )
+    // Backend returns PaginatedResult with: Items, TotalCount, PageNumber, PageSize, TotalPages
+    const response = await apiClient.get<{
+      items: VehicleColorDto[]
+      totalCount: number
+      pageNumber: number
+      pageSize: number
+      totalPages: number
+      hasPreviousPage?: boolean
+      hasNextPage?: boolean
+    }>(VEHICLE_ENDPOINTS.CMS.COLORS, queryParams, signal)
+    
+    // Map backend response to frontend format
+    return {
+      items: response.items || [],
+      totalCount: response.totalCount || 0,
+      page: response.pageNumber || 1,
+      pageSize: response.pageSize || 10,
+      totalPages: response.totalPages || 0,
+      pageNumber: response.pageNumber,
+      hasPreviousPage: response.hasPreviousPage,
+      hasNextPage: response.hasNextPage,
+    }
   },
 
   /**
@@ -400,7 +511,17 @@ export const vehiclesApi = {
     data: CreateVehicleColorRequest,
     signal?: AbortSignal
   ): Promise<VehicleColorDto> => {
-    return apiClient.post<VehicleColorDto>(VEHICLE_ENDPOINTS.CMS.COLORS, data, signal)
+    const formData = new FormData()
+    formData.append('VariantId', data.variantId)
+    formData.append('ColorName', data.colorName)
+    formData.append('ColorCode', data.colorCode)
+    formData.append('AdditionalPrice', data.additionalPrice.toString())
+    
+    if (data.image) {
+      formData.append('Image', data.image)
+    }
+
+    return apiClient.post<VehicleColorDto>(VEHICLE_ENDPOINTS.CMS.COLORS, formData, signal, true)
   },
 
   /**
@@ -411,7 +532,18 @@ export const vehiclesApi = {
     data: UpdateVehicleColorRequest,
     signal?: AbortSignal
   ): Promise<VehicleColorDto> => {
-    return apiClient.put<VehicleColorDto>(VEHICLE_ENDPOINTS.CMS.COLOR_BY_ID(id), data, signal)
+    const formData = new FormData()
+    formData.append('Id', id)
+    formData.append('ColorName', data.colorName)
+    formData.append('ColorCode', data.colorCode)
+    formData.append('AdditionalPrice', data.additionalPrice.toString())
+    formData.append('IsActive', data.isActive.toString())
+    
+    if (data.image) {
+      formData.append('Image', data.image)
+    }
+
+    return apiClient.put<VehicleColorDto>(VEHICLE_ENDPOINTS.CMS.COLOR_BY_ID(id), formData, signal, true)
   },
 
   /**

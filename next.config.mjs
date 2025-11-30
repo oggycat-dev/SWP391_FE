@@ -35,6 +35,37 @@ const nextConfig = {
       fullUrl: false,
     },
   },
+
+  // Cấu hình images để render trực tiếp từ backend (không optimize)
+  images: {
+    // Bật unoptimized để render trực tiếp URL từ backend
+    unoptimized: true,
+    // Vẫn giữ remotePatterns để Next.js cho phép load từ các domain này
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '5001',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        port: '5001',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

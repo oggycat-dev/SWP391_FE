@@ -5,6 +5,7 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string>
   signal?: AbortSignal
   _retry?: boolean // Internal flag to prevent infinite retry loop
+  isFormData?: boolean // Flag to indicate FormData upload
 }
 
 interface ApiResponse<T> {
@@ -179,7 +180,7 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { params, signal, _retry, ...init } = options
+    const { params, signal, _retry, isFormData, ...init } = options
 
     const url = new URL(`${this.baseUrl}${endpoint}`)
     if (params) {
@@ -191,9 +192,13 @@ class ApiClient {
     }
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       ...init.headers,
     } as Record<string, string>
+
+    // Only set Content-Type for JSON, not for FormData (browser will set it with boundary)
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json"
+    }
 
     // Add auth token if available
     if (typeof window !== "undefined") {
@@ -255,19 +260,21 @@ class ApiClient {
     return this.request<T>(endpoint, { method: "GET", params, signal })
   }
 
-  post<T>(endpoint: string, data: any, signal?: AbortSignal) {
+  post<T>(endpoint: string, data: any, signal?: AbortSignal, isFormData?: boolean) {
     return this.request<T>(endpoint, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
       signal,
+      isFormData,
     })
   }
 
-  put<T>(endpoint: string, data: any, signal?: AbortSignal) {
+  put<T>(endpoint: string, data: any, signal?: AbortSignal, isFormData?: boolean) {
     return this.request<T>(endpoint, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
       signal,
+      isFormData,
     })
   }
 

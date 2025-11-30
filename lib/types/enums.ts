@@ -1,11 +1,12 @@
 /**
  * User Role Enumeration
  * Maps to backend UserRole enum exactly
+ * Note: EVMManager (2) is removed, but enum values remain for backward compatibility
  */
 export enum UserRole {
   Admin = 0,
   EVMStaff = 1,
-  EVMManager = 2,
+  // EVMManager = 2, // Removed
   DealerManager = 3,
   DealerStaff = 4,
   Customer = 5,
@@ -13,12 +14,11 @@ export enum UserRole {
 
 /**
  * Role string type for type safety
- * Frontend uses these 6 roles to match backend
+ * Frontend uses these 5 roles (EVMManager removed)
  */
 export type UserRoleString = 
   | 'Admin' 
   | 'EVMStaff'
-  | 'EVMManager'
   | 'DealerManager' 
   | 'DealerStaff'
   | 'Customer'
@@ -48,4 +48,28 @@ export type StatusString =
   | 'Active' 
   | 'Pending'
   | 'Suspended'
+
+/**
+ * Vehicle Category Enumeration
+ * Maps to backend VehicleCategory enum exactly
+ */
+export enum VehicleCategory {
+  Sedan = 'Sedan',
+  SUV = 'SUV',
+  Hatchback = 'Hatchback',
+  Truck = 'Truck',
+  Van = 'Van',
+  Coupe = 'Coupe',
+}
+
+/**
+ * Vehicle Category string type for type safety
+ */
+export type VehicleCategoryString =
+  | 'Sedan'
+  | 'SUV'
+  | 'Hatchback'
+  | 'Truck'
+  | 'Van'
+  | 'Coupe'
 

@@ -33,12 +33,12 @@ const userSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   phoneNumber: z.string().optional(),
-  role: z.enum(['Admin', 'EVMStaff', 'EVMManager', 'DealerManager', 'DealerStaff', 'Customer'], {
+  role: z.enum(['Admin', 'EVMStaff', 'DealerManager', 'DealerStaff', 'Customer'], {
     required_error: "Please select a role",
   }),
-  dealerId: z.string().optional(),
 })
 
 type UserFormValues = z.infer<typeof userSchema>
@@ -69,10 +69,10 @@ export function CreateUserDialog({
       username: "",
       email: "",
       password: "",
-      fullName: "",
+      firstName: "",
+      lastName: "",
       phoneNumber: "",
       role: "Customer",
-      dealerId: "",
     },
   })
 
@@ -82,10 +82,10 @@ export function CreateUserDialog({
         username: data.username,
         email: data.email,
         password: data.password,
-        fullName: data.fullName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         phoneNumber: data.phoneNumber || undefined,
         role: data.role,
-        dealerId: data.dealerId || undefined,
       })
 
       toast({
@@ -164,12 +164,12 @@ export function CreateUserDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="fullName"
+                name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name *</FormLabel>
+                    <FormLabel>First Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="John" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -178,12 +178,12 @@ export function CreateUserDialog({
 
               <FormField
                 control={form.control}
-                name="phoneNumber"
+                name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>Last Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="+84 123 456 789" {...field} />
+                      <Input placeholder="Doe" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -191,48 +191,44 @@ export function CreateUserDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="EVMStaff">EVM Staff</SelectItem>
-                        <SelectItem value="EVMManager">EVM Manager</SelectItem>
-                        <SelectItem value="DealerManager">Dealer Manager</SelectItem>
-                        <SelectItem value="DealerStaff">Dealer Staff</SelectItem>
-                        <SelectItem value="Customer">Customer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="+84 123 456 789" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="dealerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dealer ID</FormLabel>
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Input placeholder="Optional: Dealer ID" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormDescription>Required for Dealer roles</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="EVMStaff">EVM Staff</SelectItem>
+                      <SelectItem value="DealerManager">Dealer Manager</SelectItem>
+                      <SelectItem value="DealerStaff">Dealer Staff</SelectItem>
+                      <SelectItem value="Customer">Customer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>

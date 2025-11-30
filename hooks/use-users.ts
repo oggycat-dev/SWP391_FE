@@ -41,19 +41,30 @@ export function useUsers(
 
 /**
  * Hook to fetch a single user by ID
+ * Memoizes API call to prevent duplicate requests
  */
 export function useUser(id: string | null, options?: { enabled?: boolean }) {
   const { enabled = true } = options || {}
-
-  return useApi(
+  
+  // Use ref to store id and prevent re-creation of apiCall
+  const idRef = useRef(id)
+  idRef.current = id
+  
+  // Memoize the API call function - only recreate when id changes
+  // This ensures useApi can track unique requests properly
+  const apiCall = useCallback(
     () => {
-      if (!id) throw new Error('User ID is required')
-      return usersApi.getUserById(id)
+      const currentId = idRef.current
+      if (!currentId) throw new Error('User ID is required')
+      console.log('[useUser] API call for user ID:', currentId)
+      return usersApi.getUserById(currentId)
     },
-    {
-      enabled: enabled && !!id,
-    }
+    [id] // Include id so apiCall changes when id changes, allowing useApi to track new requests
   )
+
+  return useApi(apiCall, {
+    enabled: enabled && !!id,
+  })
 }
 
 /**
