@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import * as React from "react"
-import { Plus, Search, Edit, Trash2, Shield, ShieldCheck, UserX } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Shield, ShieldCheck, UserX, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +13,7 @@ import { useUsers } from "@/hooks/use-users"
 import { CreateUserDialog } from "@/components/users/create-user-dialog"
 import { UpdateUserDialog } from "@/components/users/update-user-dialog"
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog"
+import { ViewUserDialog } from "@/components/users/view-user-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -25,7 +26,6 @@ const ROLE_OPTIONS = [
   { value: 'all', label: 'All Roles' },
   { value: 'Admin', label: 'Admin' },
   { value: 'EVMStaff', label: 'EVM Staff' },
-  { value: 'EVMManager', label: 'EVM Manager' },
   { value: 'DealerManager', label: 'Dealer Manager' },
   { value: 'DealerStaff', label: 'Dealer Staff' },
   { value: 'Customer', label: 'Customer' },
@@ -45,11 +45,11 @@ const getRoleName = (role: string | number): string => {
   // If role is already a string, return it
   if (typeof role === 'string') return role
 
-  // Map number to role name
+  // Map number to role name (excluding EVMManager = 2)
   const roleMap: Record<number, string> = {
     0: 'Admin',
     1: 'EVM Staff',
-    2: 'EVM Manager',
+    // 2: 'EVM Manager', // Removed
     3: 'Dealer Manager',
     4: 'Dealer Staff',
     5: 'Customer',
@@ -62,6 +62,7 @@ function UsersPageContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [viewingUser, setViewingUser] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [deletingUser, setDeletingUser] = useState<string | null>(null)
   
@@ -83,8 +84,11 @@ function UsersPageContent() {
   const filteredUsers = users.filter(
     (u) => {
       const searchLower = searchTerm.toLowerCase()
+      const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ')
       return (
-        (u.fullName?.toLowerCase().includes(searchLower) ?? false) ||
+        (fullName?.toLowerCase().includes(searchLower) ?? false) ||
+        (u.firstName?.toLowerCase().includes(searchLower) ?? false) ||
+        (u.lastName?.toLowerCase().includes(searchLower) ?? false) ||
         (u.email?.toLowerCase().includes(searchLower) ?? false) ||
         (u.username?.toLowerCase().includes(searchLower) ?? false) ||
         (u.phoneNumber && u.phoneNumber.includes(searchTerm))
@@ -191,13 +195,15 @@ function UsersPageContent() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.fullName || user.email || user.username || 'User'}`} />
+                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${[user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || user.username || 'User'}`} />
                           <AvatarFallback>
-                            {(user.fullName || user.email || user.username || 'U').substring(0, 2).toUpperCase()}
+                            {((user.firstName?.[0] || '') + (user.lastName?.[0] || '') || user.email?.[0] || user.username?.[0] || 'U').toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{user.fullName || user.email || user.username || 'Unknown User'}</div>
+                          <div className="font-medium">
+                            {[user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || user.username || 'Unknown User'}
+                          </div>
                           {user.username && (
                             <div className="text-xs text-muted-foreground">@{user.username}</div>
                           )}
@@ -238,6 +244,14 @@ function UsersPageContent() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => setViewingUser(user.id)}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setEditingUser(user.id)}
                         >
                           <Edit className="mr-2 h-4 w-4" />
@@ -261,13 +275,25 @@ function UsersPageContent() {
         </CardContent>
       </Card>
 
+      {viewingUser && (
+        <ViewUserDialog
+          userId={viewingUser}
+          open={!!viewingUser}
+          onOpenChange={(open) => !open && setViewingUser(null)}
+        />
+      )}
+
       {editingUser && (
         <UpdateUserDialog
           userId={editingUser}
           open={!!editingUser}
-          onOpenChange={(open) => !open && setEditingUser(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingUser(null)
+            }
+          }}
           onSuccess={() => {
-            setEditingUser(null)
+            // Only refetch list, dialog is already closed so useUser won't refetch
             refetch()
           }}
         />

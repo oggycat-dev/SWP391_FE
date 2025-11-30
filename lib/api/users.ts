@@ -16,9 +16,10 @@ export interface UserDto {
   id: string
   username: string
   email: string
-  fullName: string
+  firstName: string
+  lastName: string
   phoneNumber?: string
-  role: string // 'Admin' | 'EVMStaff' | 'EVMManager' | 'DealerManager' | 'DealerStaff' | 'Customer'
+  role: number | string // UserRole enum value (0, 1, 3, 4, 5) or string
   dealerId?: string
   isActive: boolean
   createdAt: string
@@ -29,20 +30,20 @@ export interface CreateUserRequest {
   username: string
   email: string
   password: string
-  fullName: string
+  firstName: string
+  lastName: string
   phoneNumber?: string
   role: string
-  dealerId?: string
 }
 
 export interface UpdateUserRequest {
   id: string
-  email?: string
-  fullName?: string
+  firstName: string
+  lastName: string
+  email: string
   phoneNumber?: string
-  role?: string
-  dealerId?: string
-  isActive?: boolean
+  role: number // UserRole enum value (0-5, excluding 2)
+  isActive: boolean
 }
 
 export interface GetUsersParams {

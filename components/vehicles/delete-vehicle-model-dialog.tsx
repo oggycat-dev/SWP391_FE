@@ -9,35 +9,35 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { useDeleteUser, useUser } from "@/hooks/use-users"
+import { useVehicleModel, useDeleteVehicleModel } from "@/hooks/use-vehicles"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-interface DeleteUserDialogProps {
-  userId: string
+interface DeleteVehicleModelDialogProps {
+  modelId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
 
-export function DeleteUserDialog({
-  userId,
+export function DeleteVehicleModelDialog({
+  modelId,
   open,
   onOpenChange,
   onSuccess,
-}: DeleteUserDialogProps) {
-  const { data: user } = useUser(userId, { enabled: open && !!userId })
-  const { mutate, isLoading } = useDeleteUser()
+}: DeleteVehicleModelDialogProps) {
+  const { data: model } = useVehicleModel(modelId, { enabled: open && !!modelId })
+  const { mutate, isLoading } = useDeleteVehicleModel()
   const { toast } = useToast()
 
   const handleDelete = async () => {
     try {
-      await mutate(userId)
+      await mutate(modelId)
 
       toast({
         title: "Success",
-        description: "User deleted successfully",
+        description: "Vehicle model deleted successfully",
       })
 
       onOpenChange(false)
@@ -46,7 +46,7 @@ export function DeleteUserDialog({
       toast({
         variant: "destructive",
         title: "Error",
-        description: error?.message || "Failed to delete user",
+        description: error?.message || "Failed to delete vehicle model",
       })
     }
   }
@@ -55,18 +55,18 @@ export function DeleteUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Delete User</DialogTitle>
+          <DialogTitle>Delete Vehicle Model</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this user? This action cannot be undone.
+            Are you sure you want to delete this vehicle model? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
-        {user && (
+        {model && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              You are about to delete <strong>{user.firstName} {user.lastName}</strong> ({user.email}).
-              This will soft delete the user account.
+              You are about to delete <strong>{model.modelName}</strong> ({model.brand}).
+              This will permanently remove the vehicle model from the system.
             </AlertDescription>
           </Alert>
         )}
@@ -77,7 +77,7 @@ export function DeleteUserDialog({
           </Button>
           <Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Delete User
+            Delete Model
           </Button>
         </DialogFooter>
       </DialogContent>

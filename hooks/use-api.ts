@@ -30,7 +30,7 @@ export function useApi<T>(
 
   const [state, setState] = useState<UseApiState<T>>({
     data: null,
-    isLoading: false,
+    isLoading: enabled, // Start with loading state if enabled
     error: null,
   })
 
@@ -58,6 +58,12 @@ export function useApi<T>(
     }
   }, [])
 
+  // Track if initial request has been made for current apiCall/enabled combination
+  const hasInitialRequestRef = useRef(false)
+  const previousApiCallRef = useRef(apiCall)
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
+
   const execute = useCallback(async () => {
     // Prevent duplicate requests
     if (isRequestingRef.current) {
@@ -74,34 +80,42 @@ export function useApi<T>(
     abortControllerRef.current = new AbortController()
     isRequestingRef.current = true
 
+    console.log('[useApi] Starting request...')
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
       const result = await apiCallRef.current()
+      console.log('[useApi] Request successful, result:', result)
 
-      // Check if component is still mounted
-      if (!isMountedRef.current || abortControllerRef.current?.signal.aborted) {
-        return
-      }
-
+      // Always update state, even if component unmounted (for Strict Mode)
+      // The component will handle cleanup if needed
+      console.log('[useApi] Updating state with result, isMounted:', isMountedRef.current)
       setState({ data: result, isLoading: false, error: null })
-      onSuccessRef.current?.(result)
+      
+      // Only call callbacks if still mounted
+      if (isMountedRef.current && !abortControllerRef.current?.signal.aborted) {
+        onSuccessRef.current?.(result)
+      }
     } catch (error) {
       // Ignore abort errors
       if (error instanceof Error && error.name === 'AbortError') {
-        return
-      }
-
-      // Check if component is still mounted
-      if (!isMountedRef.current || abortControllerRef.current?.signal.aborted) {
+        console.log('[useApi] Request aborted')
         return
       }
 
       const apiError = error instanceof Error ? error : new Error('Unknown error')
+      console.error('[useApi] Request failed:', apiError, 'isMounted:', isMountedRef.current)
+      
+      // Always update state, even if component unmounted (for Strict Mode)
       setState((prev) => ({ ...prev, isLoading: false, error: apiError }))
-      onErrorRef.current?.(apiError)
+      
+      // Only call callbacks if still mounted
+      if (isMountedRef.current && !abortControllerRef.current?.signal.aborted) {
+        onErrorRef.current?.(apiError)
+      }
     } finally {
       isRequestingRef.current = false
+      console.log('[useApi] Request completed, isRequestingRef set to false')
     }
   }, []) // Empty deps - use refs instead
 
@@ -111,17 +125,34 @@ export function useApi<T>(
 
   useEffect(() => {
     if (!enabled) {
+      hasInitialRequestRef.current = false
       return
     }
 
-    // Initial fetch
-    execute()
+    // Check if apiCall function has changed - if so, reset and make new request
+    const apiCallChanged = previousApiCallRef.current !== apiCall
+    if (apiCallChanged) {
+      console.log('[useApi] API call function changed, resetting request flag')
+      previousApiCallRef.current = apiCall
+      hasInitialRequestRef.current = false // Reset when apiCall changes
+    }
+
+    // Only make initial request once when enabled becomes true or apiCall changes
+    if (!hasInitialRequestRef.current) {
+      hasInitialRequestRef.current = true
+      console.log('[useApi] Making initial request (enabled:', enabled, ', apiCall changed:', apiCallChanged, ')')
+      execute()
+    } else {
+      console.log('[useApi] Skipping - initial request already made for this apiCall')
+    }
 
     // Set up refetch interval if provided
+    let intervalId: NodeJS.Timeout | null = null
     if (refetchInterval && refetchInterval > 0) {
-      intervalRef.current = setInterval(() => {
+      intervalId = setInterval(() => {
         execute()
       }, refetchInterval)
+      intervalRef.current = intervalId
     }
 
     // Cleanup on unmount or when dependencies change
@@ -132,14 +163,18 @@ export function useApi<T>(
       }
 
       // Clear interval
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
 
       isRequestingRef.current = false
+      // Don't reset hasInitialRequestRef here - let it reset when enabled or apiCall changes
     }
-  }, [enabled, refetchInterval, execute])
+  }, [enabled, refetchInterval, apiCall, execute]) // Include apiCall and execute to detect changes
 
   return {
     ...state,

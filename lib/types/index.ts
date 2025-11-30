@@ -1,4 +1,4 @@
-export { UserRole, type UserRoleString, type ApiPrefix } from './enums'
+export { UserRole, type UserRoleString, type ApiPrefix, VehicleCategory, type VehicleCategoryString } from './enums'
 import type { UserRoleString } from './enums'
 
 export type Role = UserRoleString

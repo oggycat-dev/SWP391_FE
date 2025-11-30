@@ -56,8 +56,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: Car,
       items: [
         {
-          title: "Catalog",
+          title: "Overview",
           url: "/dashboard/vehicles",
+        },
+        {
+          title: "Models",
+          url: "/dashboard/vehicles/models",
+        },
+        {
+          title: "Variants & Colors",
+          url: "/dashboard/vehicles/variants",
+        },
+        {
+          title: "Inventory",
+          url: "/dashboard/vehicles/inventory",
+        },
+        {
+          title: "Requests",
+          url: "/dashboard/vehicles/requests",
         },
         {
           title: "Comparison",

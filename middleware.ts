@@ -34,6 +34,16 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   )
   
+  // Handle root route: redirect to login if not authenticated
+  // If authenticated, let the page component handle role-based redirect
+  if (pathname === '/') {
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    // If authenticated, let the page component handle redirect based on role
+    return NextResponse.next()
+  }
+  
   // Redirect to login if accessing protected route without auth
   if (isProtectedRoute && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url)

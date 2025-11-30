@@ -54,10 +54,10 @@ export interface UpdateVehicleModelRequest {
 export interface GetVehicleModelsParams {
   brand?: string
   category?: string
-  year?: number
   isActive?: boolean
-  page?: number
+  pageNumber?: number // Backend uses PageNumber (1-based)
   pageSize?: number
+  searchTerm?: string // Backend uses SearchTerm
 }
 
 // ============================================================================
@@ -212,9 +212,13 @@ export interface GetCentralInventoryParams {
 export interface PaginatedResult<T> {
   items: T[]
   totalCount: number
-  page: number
+  page: number // Frontend format (mapped from pageNumber)
   pageSize: number
   totalPages: number
+  // Backend format (optional, for reference)
+  pageNumber?: number // Backend uses PageNumber
+  hasPreviousPage?: boolean
+  hasNextPage?: boolean
 }
 
 // ============================================================================
@@ -236,16 +240,34 @@ export const vehiclesApi = {
     const queryParams: Record<string, string> = {}
     if (params?.brand) queryParams.brand = params.brand
     if (params?.category) queryParams.category = params.category
-    if (params?.year) queryParams.year = String(params.year)
     if (params?.isActive !== undefined) queryParams.isActive = String(params.isActive)
-    if (params?.page) queryParams.page = String(params.page)
+    if (params?.pageNumber) queryParams.pageNumber = String(params.pageNumber) // Backend expects PageNumber
     if (params?.pageSize) queryParams.pageSize = String(params.pageSize)
+    if (params?.searchTerm) queryParams.searchTerm = params.searchTerm
 
-    return apiClient.get<PaginatedResult<VehicleModelDto>>(
-      VEHICLE_ENDPOINTS.CMS.MODELS,
-      queryParams,
-      signal
-    )
+    // Backend returns PaginatedResult with: Items, TotalCount, PageNumber, PageSize, TotalPages
+    // We need to map it to frontend format
+    const response = await apiClient.get<{
+      items: VehicleModelDto[]
+      totalCount: number
+      pageNumber: number
+      pageSize: number
+      totalPages: number
+      hasPreviousPage?: boolean
+      hasNextPage?: boolean
+    }>(VEHICLE_ENDPOINTS.CMS.MODELS, queryParams, signal)
+    
+    // Map backend response to frontend format
+    return {
+      items: response.items || [],
+      totalCount: response.totalCount || 0,
+      page: response.pageNumber || 1,
+      pageSize: response.pageSize || 10,
+      totalPages: response.totalPages || 0,
+      pageNumber: response.pageNumber, // Keep for reference
+      hasPreviousPage: response.hasPreviousPage,
+      hasNextPage: response.hasNextPage,
+    }
   },
 
   /**
