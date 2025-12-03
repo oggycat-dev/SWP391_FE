@@ -84,7 +84,7 @@ dealer-management-system/
 ## Demo Credentials
 
 For testing with mock backend:
-- Email: `admin@cleanarchitecture.com`
+- Email: `admin@fpt.edu.vn`
 - Password: `Admin@123456`
 
 ## License
